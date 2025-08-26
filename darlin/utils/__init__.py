@@ -1,11 +1,27 @@
 """
-工具模块 - 包含序列处理和其他实用函数
+实用工具模块 - 提供CARLIN分析所需的基础序列处理功能
 """
 
-# from .sequence_utils import reverse_complement, translate_dna, find_orfs
+from .sequence_utils import (
+    reverse_complement,
+    is_valid_dna,
+    clean_sequence,
+    calculate_gc_content,
+    count_nucleotides,
+    hamming_distance,
+    format_sequence,
+    parse_fasta_string,
+    to_fasta_string
+)
 
 __all__ = [
-    # 'reverse_complement',
-    # 'translate_dna', 
-    # 'find_orfs'
+    'reverse_complement',
+    'is_valid_dna',
+    'clean_sequence',
+    'calculate_gc_content',
+    'count_nucleotides',
+    'hamming_distance',
+    'format_sequence',
+    'parse_fasta_string',
+    'to_fasta_string'
 ] 

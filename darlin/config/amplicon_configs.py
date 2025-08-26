@@ -390,4 +390,11 @@ def get_original_carlin_config() -> AmpliconConfig:
     global ORIGINAL_CARLIN
     if ORIGINAL_CARLIN is None:
         ORIGINAL_CARLIN = load_original_carlin_config()
-    return ORIGINAL_CARLIN 
+    return ORIGINAL_CARLIN
+
+# 立即初始化配置
+try:
+    ORIGINAL_CARLIN = get_original_carlin_config()
+except FileNotFoundError:
+    # 如果找不到配置文件，使用硬编码的默认配置
+    ORIGINAL_CARLIN = AmpliconConfig() 
