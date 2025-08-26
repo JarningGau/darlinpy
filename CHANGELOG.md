@@ -1,13 +1,32 @@
-# Changelog
+# 更新日志
 
-All notable changes to this project will be documented in this file.
+## [Unreleased] - 待发布
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+### 新增功能
+- **突变注释模块** (`mutations/`)
+  - 全新的`Mutation`类，支持多种突变类型和HGVS格式注释
+  - `MutationIdentifier`类，实现智能突变识别和分析
+  - Cas9特异性事件识别和置信度评估
+  - 相邻突变智能合并算法
+  - 15个全面的单元测试用例
+  - 交互式演示脚本 (`examples/mutation_demo.py`)
 
-## [Unreleased]
+### 改进
+- 完善了AlignedSEQ与突变注释系统的集成
+- 增强了错误处理和数据验证
 
-## [0.1.0] - 2024-01-XX
+---
+
+## [0.1.0] - 2024-12-19
+
+### 主要功能
+
+#### 核心比对算法
+- **cas9_align**: 实现了三状态动态规划算法，支持位置特异性gap惩罚
+- **序列编码**: `nt2int`和`int2nt`函数，支持高效的数值计算
+- **CARLINAligner**: 高级比对器，提供批量处理和统计分析功能
+
+#### 配置管理
 
 ### Added
 - Initial release of DARLIN Python
