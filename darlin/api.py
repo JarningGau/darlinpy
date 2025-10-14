@@ -173,7 +173,7 @@ def analyze_sequences(
         if verbose:
             print("正在进行序列比对...")
         
-        aligner = CARLINAligner(amplicon_config)
+        aligner = CARLINAligner(amplicon_config=amplicon_config)
         alignment_results = aligner.align_sequences(valid_sequences)
         
         # 提取比对得分和序列

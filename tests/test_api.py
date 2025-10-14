@@ -113,7 +113,7 @@ class TestAnalyzeSequences:
         """测试无效配置"""
         sequences = ["ACGTACGTACGTACGTACGT" * 10]  # 200bp序列
         
-        with pytest.raises(ValueError, match="不支持的配置名称"):
+        with pytest.raises(ValueError, match="不支持的locus"):
             analyze_sequences(sequences, config="InvalidConfig")
     
     def test_analyze_invalid_method(self):
@@ -203,7 +203,7 @@ class TestAnalyzeSequences:
         sequences = [carlin_ref[:200]]
         
         # 测试不同的配置名称格式
-        configs_to_test = ['OriginalCARLIN', 'original']
+        configs_to_test = ['OriginalCARLIN', 'Col1a1']
         
         for config in configs_to_test:
             result = analyze_sequences(sequences, config=config, verbose=False)
