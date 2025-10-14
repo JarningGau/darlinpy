@@ -38,6 +38,7 @@ class Mutation:
         seq_new: 突变后序列片段
         motif_index: 发生突变的motif索引 (0-based)
         confidence: 突变调用的置信度 (0-1)
+        confidence_label: 离散置信度标签 ('High' | 'Low')
     """
     type: MutationType
     loc_start: int
@@ -46,6 +47,7 @@ class Mutation:
     seq_new: str
     motif_index: int = -1
     confidence: float = 1.0
+    confidence_label: str = "Low"
     
     def __post_init__(self):
         """验证突变数据"""
@@ -263,7 +265,8 @@ class MutationIdentifier:
             seq_old=ref_nogap,
             seq_new=seq_nogap,
             motif_index=motif_idx,
-            confidence=self.min_confidence
+            confidence=self.min_confidence,
+            confidence_label="Low"
         )
     
     def _classify_mutation(self, seq: str, ref: str) -> Tuple[MutationType, str, str]:
@@ -316,21 +319,40 @@ class MutationIdentifier:
         
         # 过滤和增强Cas9特异性事件
         cas9_mutations = []
+        window = 4
+
+        # 支持 cut_sites 为 1-based 的整数列表或区间列表(包含端点)
+        def _normalize_intervals(cuts: List[Union[int, Tuple[int, int]]]) -> List[Tuple[int, int]]:
+            intervals: List[Tuple[int, int]] = []
+            for cs in cuts:
+                if isinstance(cs, int):
+                    intervals.append((cs, cs))
+                else:
+                    start, end = cs
+                    if start > end:
+                        start, end = end, start
+                    intervals.append((start, end))
+            return intervals
+
+        cut_intervals: List[Tuple[int, int]] = _normalize_intervals(cut_sites) if cut_sites else []
         for mutation in basic_mutations:
-            # 检查突变是否靠近切割位点
-            near_cutsite = any(
-                abs(mutation.loc_start - cutsite) <= 10 or
-                abs(mutation.loc_end - cutsite) <= 10
-                for cutsite in cut_sites
-            )
+            # 统一用区间重叠来判断near：将突变区间按窗口扩展，与cutsite区间检查是否相交
+            mut_start = mutation.loc_start
+            mut_end = mutation.loc_start if mutation.type == MutationType.INSERTION else mutation.loc_end
+            expanded_start = mut_start - window
+            expanded_end = mut_end + window
+            near_cutsite = any(not (expanded_end < cs_start or expanded_start > cs_end)
+                               for cs_start, cs_end in cut_intervals)
             
             if near_cutsite:
                 # 增加置信度
                 mutation.confidence = min(1.0, mutation.confidence + 0.1)
+                mutation.confidence_label = "High"
                 cas9_mutations.append(mutation)
             elif mutation.type in [MutationType.INSERTION, MutationType.DELETION]:
                 # 即使不在切割位点附近，indel也可能是Cas9导致的
                 mutation.confidence = max(0.5, mutation.confidence - 0.2)
+                mutation.confidence_label = "Low"
                 cas9_mutations.append(mutation)
         
         return cas9_mutations
@@ -432,4 +454,35 @@ def annotate_mutations(aligned_seq: AlignedSEQ,
     if merge_adjacent:
         mutations = identifier.merge_adjacent_mutations(mutations)
     
+    # 合并后按最终区间重算near并设置标签/分数（window=4），支持cutsite为点或区间
+    if cas9_mode and cut_sites:
+        window = 4
+
+        def _normalize_intervals(cuts: List[Union[int, Tuple[int, int]]]) -> List[Tuple[int, int]]:
+            intervals: List[Tuple[int, int]] = []
+            for cs in cuts:
+                if isinstance(cs, int):
+                    intervals.append((cs, cs))
+                else:
+                    start, end = cs
+                    if start > end:
+                        start, end = end, start
+                    intervals.append((start, end))
+            return intervals
+
+        cut_intervals: List[Tuple[int, int]] = _normalize_intervals(cut_sites)
+        for m in mutations:
+            mut_start = m.loc_start
+            mut_end = m.loc_start if m.type == MutationType.INSERTION else m.loc_end
+            expanded_start = mut_start - window
+            expanded_end = mut_end + window
+            near = any(not (expanded_end < cs_start or expanded_start > cs_end)
+                       for cs_start, cs_end in cut_intervals)
+            if near:
+                m.confidence_label = "High"
+                m.confidence = min(1.0, max(m.confidence, 0.8) + 0.1)
+            elif m.type in [MutationType.INSERTION, MutationType.DELETION]:
+                m.confidence_label = "Low"
+                m.confidence = max(0.5, min(m.confidence, 1.0) - 0.2)
+
     return mutations 

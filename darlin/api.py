@@ -286,19 +286,20 @@ def _load_config(config: Union[str, AmpliconConfig]) -> AmpliconConfig:
 
 
 def _get_cut_sites(amplicon_config: AmpliconConfig) -> List[int]:
-    """获取CARLIN的Cas9切割位点"""
-    # 基于CARLIN的设计，切割位点通常在segments之间
-    # 这里提供一个简化的实现，实际位点可能需要根据具体配置调整
-    cut_sites = []
-    position = len(amplicon_config.sequence.prefix)
+    """获取CARLIN的Cas9切割位点
     
-    for i, segment in enumerate(amplicon_config.sequence.segments):
-        position += len(segment)
-        if i < len(amplicon_config.sequence.segments) - 1:
-            # 在segments之间添加潜在的切割位点
-            cut_sites.append(position)
-    
-    return cut_sites
+    使用配置中每个 segment 的 cutsite 区间（后7bp），取区间中心并转换为1-based坐标。
+    """
+    # positions['cutsites'] 为相对于 CARLIN 的 0-based 半开区间 (start, end)
+    # 这里取每个区间的中心点，并转换为 1-based 坐标以匹配突变定位
+    cutsite_intervals = amplicon_config.positions.get('cutsites', [])
+    centers_1_based: List[int] = []
+    for start_0_based, end_0_based in cutsite_intervals:
+        # 区间为 [start, end)，最后一个碱基索引为 end-1
+        last_index = end_0_based - 1
+        center_0_based = start_0_based + (last_index - start_0_based) // 2
+        centers_1_based.append(center_0_based + 1)
+    return centers_1_based
 
 
 def _generate_summary_stats(
