@@ -27,6 +27,7 @@ class AnalysisResult:
         called_alleles: 调用的等位基因列表
         mutations: 每个等位基因对应的突变列表
         alignment_scores: 每个序列的比对得分
+        aligned_query: 每个序列的比对后序列
         summary_stats: 汇总统计信息
         processing_time: 处理耗时(秒)
         config_used: 使用的配置名称
@@ -35,11 +36,12 @@ class AnalysisResult:
     called_alleles: List[AlleleCallResult]
     mutations: List[List[Mutation]]
     alignment_scores: List[float]
-    summary_stats: Dict[str, Any]
+    summary_stats: Dict[str, Any] = field(default_factory=dict)  # 提供默认以避免dataclass参数顺序错误
+    aligned_query: List[str] = field(default_factory=list)
     processing_time: float = 0.0
     config_used: str = "OriginalCARLIN"
     method_used: str = "coarse_grain"
-    
+
     def __post_init__(self):
         """验证结果数据一致性"""
         if len(self.called_alleles) != len(self.mutations):
@@ -112,7 +114,8 @@ def analyze_sequences(
     dominant_threshold: float = 0.5,
     annotate_mutations_flag: bool = True,
     merge_adjacent_mutations: bool = True,
-    verbose: bool = False
+    verbose: bool = False,
+    min_sequence_length: int = 50
 ) -> AnalysisResult:
     """
     分析CARLIN序列
@@ -126,6 +129,7 @@ def analyze_sequences(
         annotate_mutations_flag: 是否注释突变
         merge_adjacent_mutations: 是否合并相邻突变
         verbose: 是否显示详细信息
+        min_sequence_length: 最短序列长度阈值，短于此长度的序列将被过滤
         
     Returns:
         分析结果
@@ -159,11 +163,11 @@ def analyze_sequences(
     if not sequences:
         raise ValueError("序列列表不能为空")
     
-    # 过滤序列
-    valid_sequences = [seq for seq in sequences if seq and len(seq) >= 50]
+    # 过滤序列（移除过短或为空的序列）
+    valid_sequences = [seq for seq in sequences if seq and len(seq) >= min_sequence_length]
     if len(valid_sequences) < len(sequences):
         if verbose:
-            print(f"过滤了 {len(sequences) - len(valid_sequences)} 条短序列")
+            print(f"过滤了 {len(sequences) - len(valid_sequences)} 条短序列 (< {min_sequence_length}bp)")
     
     if not valid_sequences:
         raise ValueError("没有有效的序列可供分析")
@@ -245,6 +249,7 @@ def analyze_sequences(
             mutations=mutations_list,
             alignment_scores=alignment_scores,
             summary_stats=summary_stats,
+            aligned_query=[r["aligned_seq_obj"].get_seq() for r in alignment_results],
             processing_time=processing_time,
             config_used=str(config),
             method_used=method

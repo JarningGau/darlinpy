@@ -366,39 +366,6 @@ class AmpliconConfig:
         return "\n".join(lines)
 
 
-def load_original_carlin_config() -> AmpliconConfig:
-    """加载原始CARLIN配置"""
-    # 自动查找配置文件路径
-    possible_paths = [
-        "../allele_calling/carlin-master/cfg/amplicon/OriginalCARLIN.json",
-        "../../allele_calling/carlin-master/cfg/amplicon/OriginalCARLIN.json", 
-        "/home/jarning/project-core/DARLIN-toolkits/allele_calling/carlin-master/cfg/amplicon/OriginalCARLIN.json"
-    ]
-    
-    for path in possible_paths:
-        if Path(path).exists():
-            return AmpliconConfig(config_file=path)
-    
-    raise FileNotFoundError("找不到OriginalCARLIN.json配置文件")
-
-
-# 预定义的配置
-ORIGINAL_CARLIN = None  # 将在首次访问时延迟加载
-
-def get_original_carlin_config() -> AmpliconConfig:
-    """获取原始CARLIN配置（延迟加载）"""
-    global ORIGINAL_CARLIN
-    if ORIGINAL_CARLIN is None:
-        ORIGINAL_CARLIN = load_original_carlin_config()
-    return ORIGINAL_CARLIN
-
-# 立即初始化配置
-try:
-    ORIGINAL_CARLIN = get_original_carlin_config()
-except FileNotFoundError:
-    # 如果找不到配置文件，使用硬编码的默认配置
-    ORIGINAL_CARLIN = AmpliconConfig() 
-
 def load_carlin_config_by_locus(locus: str = "Col1a1") -> AmpliconConfig:
     """
     根据locus名称加载对应的CARLIN配置
@@ -422,3 +389,21 @@ def load_carlin_config_by_locus(locus: str = "Col1a1") -> AmpliconConfig:
         raise FileNotFoundError(f"找不到配置文件: {config_file}")
     
     return AmpliconConfig(config_file=str(config_file)) 
+
+
+# 预定义的配置
+ORIGINAL_CARLIN = None  # 将在首次访问时延迟加载
+
+def get_original_carlin_config() -> AmpliconConfig:
+    """获取原始CARLIN配置（延迟加载）"""
+    global ORIGINAL_CARLIN
+    if ORIGINAL_CARLIN is None:
+        ORIGINAL_CARLIN = load_carlin_config_by_locus("Col1a1")
+    return ORIGINAL_CARLIN
+
+# 立即初始化配置
+try:
+    ORIGINAL_CARLIN = get_original_carlin_config()
+except FileNotFoundError:
+    # 如果找不到配置文件，使用硬编码的默认配置
+    ORIGINAL_CARLIN = AmpliconConfig()
