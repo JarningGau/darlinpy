@@ -27,7 +27,8 @@ class AnalysisResult:
         called_alleles: 调用的等位基因列表
         mutations: 每个等位基因对应的突变列表
         alignment_scores: 每个序列的比对得分
-        aligned_query: 每个序列的比对后序列
+        aligned_query: 对齐后的输入序列
+        aligned_reference: 对齐后的参考序列
         summary_stats: 汇总统计信息
         processing_time: 处理耗时(秒)
         config_used: 使用的配置名称
@@ -38,6 +39,7 @@ class AnalysisResult:
     alignment_scores: List[float]
     summary_stats: Dict[str, Any] = field(default_factory=dict)  # 提供默认以避免dataclass参数顺序错误
     aligned_query: List[str] = field(default_factory=list)
+    aligned_reference: List[str] = field(default_factory=list)
     processing_time: float = 0.0
     config_used: str = "OriginalCARLIN"
     method_used: str = "coarse_grain"
@@ -250,6 +252,7 @@ def analyze_sequences(
             alignment_scores=alignment_scores,
             summary_stats=summary_stats,
             aligned_query=[r["aligned_seq_obj"].get_seq() for r in alignment_results],
+            aligned_reference=[r["aligned_seq_obj"].get_ref() for r in alignment_results],
             processing_time=processing_time,
             config_used=str(config),
             method_used=method
