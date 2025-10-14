@@ -398,3 +398,27 @@ try:
 except FileNotFoundError:
     # 如果找不到配置文件，使用硬编码的默认配置
     ORIGINAL_CARLIN = AmpliconConfig() 
+
+def load_carlin_config_by_locus(locus: str = "Col1a1") -> AmpliconConfig:
+    """
+    根据locus名称加载对应的CARLIN配置
+    
+    Args:
+        locus: 位点名称，支持 "Col1a1", "Rosa", "Tigre"
+    
+    Returns:
+        AmpliconConfig: 对应的配置对象
+    """
+    # 验证locus参数
+    valid_loci = ["Col1a1", "Rosa", "Tigre"]
+    if locus not in valid_loci:
+        raise ValueError(f"不支持的locus: {locus}。支持的locus: {valid_loci}")
+    
+    # 构建配置文件路径
+    config_dir = Path(__file__).parent / "data"
+    config_file = config_dir / f"array_{locus}.json"
+    
+    if not config_file.exists():
+        raise FileNotFoundError(f"找不到配置文件: {config_file}")
+    
+    return AmpliconConfig(config_file=str(config_file)) 

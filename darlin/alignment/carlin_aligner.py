@@ -7,6 +7,7 @@ CARLIN特异性序列比对器
 
 import numpy as np
 from typing import Tuple, Optional, Dict, List
+from pathlib import Path
 
 from .cas9_align import cas9_align, nt2int, int2nt, print_cas9_alignment
 from .aligned_seq import AlignedSEQ, AlignedSEQMotif, SequenceSanitizer, desemble_sequence, calculate_motif_boundaries
@@ -21,17 +22,24 @@ class CARLINAligner:
     """
     
     def __init__(self, 
+                 locus: str = "Col1a1",
                  amplicon_config: Optional[AmpliconConfig] = None,
                  scoring_config: Optional[ScoringConfig] = None):
         """
         初始化比对器
         
         Args:
-            amplicon_config: CARLIN扩增子配置，默认使用OriginalCARLIN
+            locus: 位点名称，用于选择对应的JSON配置模板，默认为"Col1a1"
+            amplicon_config: CARLIN扩增子配置，如果提供则优先使用
             scoring_config: 评分配置，默认使用NUC44
         """
-        # 使用默认配置
-        self.amplicon_config = amplicon_config or get_original_carlin_config()
+        # 根据locus加载配置
+        if amplicon_config is None:
+            from ..config.amplicon_configs import load_carlin_config_by_locus
+            self.amplicon_config = load_carlin_config_by_locus(locus)
+        else:
+            self.amplicon_config = amplicon_config
+        
         self.scoring_config = scoring_config or get_default_scoring_config()
         
         # 获取预计算的参数
@@ -42,7 +50,7 @@ class CARLINAligner:
         # 编码参考序列
         self.reference_encoded = nt2int(self.reference_sequence)
         
-        print(f"✅ CARLIN比对器初始化成功")
+        print(f"✅ CARLIN比对器初始化成功 (locus: {locus})")
         print(f"   - 参考序列长度: {len(self.reference_sequence)} bp")
         print(f"   - 评分矩阵: {self.scoring_config.matrix_type}")
         print(f"   - Gap惩罚范围: {self.open_penalty_array.min():.1f}-{self.open_penalty_array.max():.1f}")
