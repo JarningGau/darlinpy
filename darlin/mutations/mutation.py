@@ -191,24 +191,70 @@ class MutationIdentifier:
         seq = motif.seq
         ref = motif.ref
         
-        # 移除gap并分析
+        # 先进行基于gap的indel识别，避免插入/缺失在去gap后被误判
         seq_nogap = seq.replace('-', '')
         ref_nogap = ref.replace('-', '')
-        
+
         if seq == ref:
             # 完全匹配，无突变
             return None
-        
-        # 确定突变类型和位置
-        mutation_type, seq_old, seq_new = self._classify_mutation(seq, ref)
+
+        # 优先根据gap形态判断：ref含gap且seq无gap => 插入；seq含gap且ref无gap => 缺失
+        # 这样可以保留插入/缺失信息，不会在去gap后被误判为替换
+        if ('-' in ref) and ('-' not in seq):
+            # 插入：在参考存在gap的位置，查询序列提供插入的碱基
+            mutation_type = MutationType.INSERTION
+            # 找到插入的确切片段和插入发生的位置（位于gap前后的参考碱基之间）
+            inserted_bases = []
+            ref_bases_before_gap = 0
+            seen_gap = False
+            for i in range(len(ref)):
+                if ref[i] == '-':
+                    inserted_bases.append(seq[i])
+                    seen_gap = True
+                else:
+                    if not seen_gap:
+                        ref_bases_before_gap += 1
+            # 插入在motif内第一个gap之前与其前一个参考碱基之间
+            insertion_after = start_pos + max(ref_bases_before_gap - 1, 0)
+            loc_start = insertion_after
+            loc_end = insertion_after  # 插入使用start==end的表示
+            ref_nogap = ''
+            seq_nogap = ''.join(inserted_bases)
+        elif ('-' in seq) and ('-' not in ref):
+            # 缺失：查询在参考碱基处出现gap
+            mutation_type = MutationType.DELETION
+            # 找到缺失的参考碱基范围
+            deleted_bases = []
+            first_del_ref_index = None
+            for i in range(len(seq)):
+                if seq[i] == '-':
+                    deleted_bases.append(ref[i])
+                    if first_del_ref_index is None:
+                        first_del_ref_index = i
+            # 计算缺失在参考中的起止位置（基于非gap计数）
+            # 统计到缺失起点之前的非gap参考碱基数量
+            ref_non_gap_before = sum(1 for i in range(first_del_ref_index) if ref[i] != '-')
+            loc_start = start_pos + ref_non_gap_before
+            loc_end = loc_start + len(deleted_bases) - 1
+            ref_nogap = ''.join(deleted_bases)
+            seq_nogap = ''
+        else:
+            # 其他情况回退到长度/内容对比分类
+            mutation_type, seq_old, seq_new = self._classify_mutation(seq, ref)
+            # 使用_classify_mutation的结果覆盖无gap序列
+            ref_nogap = seq_old if isinstance(seq_old, str) else ref_nogap
+            seq_nogap = seq_new if isinstance(seq_new, str) else seq_nogap
         
         # 计算精确的位置范围
-        loc_start = start_pos
-        if len(ref_nogap) > 0:
-            loc_end = start_pos + len(ref_nogap) - 1
-        else:
-            # 插入的情况，结束位置等于起始位置
-            loc_end = start_pos
+        if 'loc_start' not in locals():
+            # 非上述专门分支（或复合/替换）按motif整体参考长度定位
+            loc_start = start_pos
+            if len(ref_nogap) > 0:
+                loc_end = start_pos + len(ref_nogap) - 1
+            else:
+                # 插入的情况，结束位置等于起始位置
+                loc_end = start_pos
         
         return Mutation(
             type=mutation_type,
