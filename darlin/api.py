@@ -106,7 +106,7 @@ class AnalysisResult:
 
 def analyze_sequences(
     sequences: List[str],
-    config: Union[str, AmpliconConfig] = 'OriginalCARLIN',
+    config: Union[str, AmpliconConfig] = 'Col1a1',  # 改为默认Col1a1
     method: str = 'coarse_grain',
     min_reads: int = 1,
     dominant_threshold: float = 0.5,
@@ -115,41 +115,41 @@ def analyze_sequences(
     verbose: bool = False
 ) -> AnalysisResult:
     """
-    分析CARLIN序列的主函数
-    
-    这是DARLIN的主要接口，提供从原始序列到完整分析结果的一站式服务。
+    分析CARLIN序列
     
     Args:
-        sequences: 要分析的DNA序列列表
-        config: 扩增子配置，可以是配置名称字符串或AmpliconConfig对象
-                支持的配置名称: 'OriginalCARLIN'
-        method: 等位基因调用方法，'exact' 或 'coarse_grain'
-        min_reads: 最小reads数量阈值，低于此数量的序列将被过滤
-        dominant_threshold: 主导等位基因阈值 (0-1)
-        annotate_mutations_flag: 是否进行突变注释
-        merge_adjacent_mutations: 是否合并相邻的突变
-        verbose: 是否显示详细进度信息
+        sequences: 待分析的序列列表
+        config: 配置，可以是locus名称字符串或AmpliconConfig对象，默认为'Col1a1'
+        method: 调用方法 ('exact' 或 'coarse_grain')
+        min_reads: 最小读取数
+        dominant_threshold: 主导等位基因阈值
+        annotate_mutations_flag: 是否注释突变
+        merge_adjacent_mutations: 是否合并相邻突变
+        verbose: 是否显示详细信息
         
     Returns:
-        AnalysisResult: 完整的分析结果对象
-        
-    Raises:
-        ValueError: 参数无效时
-        RuntimeError: 分析过程中发生错误时
-        
-    Examples:
-        >>> sequences = ["ACGTACGT...", "TGCATGCA..."]
-        >>> result = analyze_sequences(sequences, config='OriginalCARLIN')
-        >>> print(f"调用了 {len(result.called_alleles)} 个等位基因")
-        >>> result.print_summary()
+        分析结果
     """
     start_time = time.time()
     
     if verbose:
         print(f"开始分析 {len(sequences)} 条序列...")
     
-    # 1. 参数验证和配置加载
-    amplicon_config = _load_config(config)
+    # 处理配置参数
+    if isinstance(config, str):
+        # 如果是字符串，作为locus处理
+        if config == 'OriginalCARLIN':
+            # 向后兼容性：如果用户明确指定OriginalCARLIN，使用原来的方式
+            from .config.amplicon_configs import get_original_carlin_config
+            amplicon_config = get_original_carlin_config()
+        else:
+            # 作为locus处理
+            from .config.amplicon_configs import load_carlin_config_by_locus
+            amplicon_config = load_carlin_config_by_locus(config)
+    else:
+        # 直接使用提供的AmpliconConfig
+        amplicon_config = config
+    
     if verbose:
         print(f"使用配置: {config}")
     
@@ -188,7 +188,8 @@ def analyze_sequences(
         if verbose:
             print("正在进行等位基因调用...")
         
-        caller = AlleleCaller(amplicon_config, dominant_threshold)
+        # 修改AlleleCaller的初始化
+        caller = AlleleCaller(amplicon_config=amplicon_config, dominant_threshold=dominant_threshold)
         
         # 根据方法选择调用策略
         called_alleles = []

@@ -23,15 +23,25 @@ class AlleleCaller:
     2. call_alleles_coarse_grain: 基于事件结构的粗粒度调用
     """
     
-    def __init__(self, amplicon_config: AmpliconConfig, dominant_threshold: float = 0.5):
+    def __init__(self, 
+             locus: str = "Col1a1",
+             amplicon_config: Optional[AmpliconConfig] = None, 
+             dominant_threshold: float = 0.5):
         """
         初始化等位基因调用器
         
         Args:
-            amplicon_config: CARLIN扩增子配置
+            locus: 位点名称，用于选择对应的JSON配置模板，默认为"Col1a1"
+            amplicon_config: CARLIN扩增子配置，如果提供则优先使用
             dominant_threshold: 主导等位基因的最小比例阈值
         """
-        self.amplicon_config = amplicon_config
+        # 根据locus加载配置
+        if amplicon_config is None:
+            from ..config.amplicon_configs import load_carlin_config_by_locus
+            self.amplicon_config = load_carlin_config_by_locus(locus)
+        else:
+            self.amplicon_config = amplicon_config
+        
         self.dominant_threshold = dominant_threshold
         
     def unique_by_frequency(self, 

@@ -9,6 +9,8 @@ import numpy as np
 from darlin.alignment import AlignedSEQ, AlignedSEQMotif, CARLINAligner, create_default_aligner
 from darlin.calling import AlleleCaller, AlleleCallResult, BulkAlleleCallResult, AlleleCallStatistics
 from darlin.config import get_original_carlin_config
+from typing import Optional
+from darlin.config.amplicon_configs import load_carlin_config_by_locus
 
 
 class TestAlleleData(unittest.TestCase):
@@ -79,12 +81,12 @@ class TestAlleleCaller(unittest.TestCase):
     
     def setUp(self):
         """设置测试环境"""
-        self.amplicon_config = get_original_carlin_config()
-        self.caller = AlleleCaller(self.amplicon_config)
+        # 使用Col1a1配置（默认）
+        self.caller = AlleleCaller(locus="Col1a1")
         self.aligner = create_default_aligner()
         
         # 创建测试序列
-        self.reference_seq = self.amplicon_config.full_sequence
+        self.reference_seq = self.caller.amplicon_config.full_sequence
         
         # 创建一些测试序列（无突变、单个突变、多个突变）
         self.test_sequences = [
@@ -297,7 +299,8 @@ class TestAdvancedAlleleCalling(unittest.TestCase):
     def setUp(self):
         """设置测试环境"""
         self.amplicon_config = get_original_carlin_config()
-        self.caller = AlleleCaller(self.amplicon_config, dominant_threshold=0.6)  # 更高的阈值
+        # 使用关键字参数明确指定amplicon_config
+        self.caller = AlleleCaller(amplicon_config=self.amplicon_config, dominant_threshold=0.6)  # 更高的阈值
         self.aligner = create_default_aligner()
         
     def test_complex_weight_scenarios(self):

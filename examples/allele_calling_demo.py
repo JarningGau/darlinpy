@@ -9,12 +9,13 @@ CARLIN等位基因调用演示
 """
 
 import numpy as np
-from typing import List, Tuple
+from typing import List, Tuple, Optional, Union
 
 # CARLIN imports
 from darlin.config import get_original_carlin_config
 from darlin.alignment import create_default_aligner, AlignedSEQ, AlignedSEQMotif
 from darlin.calling import AlleleCaller, AlleleCallResult, BulkAlleleCallResult, AlleleCallStatistics
+from darlin.config.amplicon_configs import load_carlin_config_by_locus
 
 
 def create_sample_sequences() -> List[AlignedSEQ]:
@@ -52,12 +53,14 @@ def create_sample_sequences() -> List[AlignedSEQ]:
 
 
 def demonstrate_basic_calling():
-    """演示基本的等位基因调用功能"""
-    print("=== 基本等位基因调用演示 ===\n")
+    """演示基本的等位基因调用"""
+    print("=== 基本等位基因调用演示 ===")
     
-    # 初始化
-    config = get_original_carlin_config()
-    caller = AlleleCaller(config, dominant_threshold=0.5)
+    # 使用Col1a1配置（默认）
+    caller = AlleleCaller(locus="Col1a1", dominant_threshold=0.5)
+    
+    # 或者使用Rosa配置
+    # caller = AlleleCaller(locus="Rosa", dominant_threshold=0.5)
     
     # 创建示例序列
     sequences = create_sample_sequences()
@@ -129,11 +132,10 @@ def simulate_umi_groups(aligned_seqs: List[AlignedSEQ], num_groups: int = 10) ->
 
 def demonstrate_bulk_calling():
     """演示批量等位基因调用"""
-    print("\n\n=== 批量等位基因调用演示 ===\n")
+    print("=== 批量等位基因调用演示 ===")
     
-    # 初始化
-    config = get_original_carlin_config()
-    caller = AlleleCaller(config, dominant_threshold=0.6)
+    # 使用Tigre配置
+    caller = AlleleCaller(locus="Tigre", dominant_threshold=0.6)
     
     # 创建示例序列和模拟UMI组
     sequences = create_sample_sequences()
