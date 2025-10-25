@@ -198,10 +198,6 @@ $RECYCLE.BIN/
 
 # DARLIN-specific
 # Output directories
-output/
-results/
-data/
-plots/
 
 # Configuration files with sensitive data
 *.secret

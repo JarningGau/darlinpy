@@ -1,0 +1,126 @@
+{
+    "sequence": {
+        "segments": [
+            "GAGTCGAGACGCTGACGATA",
+            "GACACGACTCGCGCATACGA",
+            "GCGAGCGCTATGAGCGACTA",
+            "GATAGTATGCGTACACGCGA",
+            "GACTACAGTCGCTACGACGA",
+            "GATACGATACGCGCACGCTA",
+            "GCGACTGTACGCACACGCGA",
+            "GACTGCACGACAGTCGACGA",
+            "GATACGTAGCACGCAGACGA",
+            "GAGAGCGCGCTCGTCGACTA"
+        ],
+        "pam": "TGGAGTC",
+        "prefix": "TCGCCG",
+        "postfix": "TGGA",
+        "Primer5": "GCTCGGTACCTCGCGAAT",
+        "Primer3": "TCTAGTTGC",
+        "SecondarySequence": "GTCTTGTCGGTGCCT"
+    },
+    "match_score": {
+        "Primer5": 17,
+        "Primer3": 8,
+        "SecondarySequence": 14
+    },
+    "open_penalty": {
+        "init": 10,
+        "cutsites": [
+            8,
+            7.5,
+            7.0,
+            6.5,
+            6,
+            6,
+            6
+        ],
+        "consites": [
+            10,
+            9.875,
+            9.75,
+            9.625,
+            9.5,
+            9.375,
+            9.25,
+            9.125,
+            9.0,
+            8.875,
+            8.75,
+            8.625,
+            8.5
+        ],
+        "pam": [
+            8.6,
+            8.8,
+            9.0,
+            9.2,
+            9.4,
+            9.6,
+            9.8
+        ],
+        "prefix": [
+            10,
+            10,
+            10,
+            10,
+            10,
+            10
+        ],
+        "postfix": [
+            8.6,
+            8.8,
+            9.0,
+            9.2
+        ]
+    },
+    "close_penalty": {
+        "cutsites": [
+            8,
+            7.5,
+            7.0,
+            6.5,
+            6.5,
+            6.5,
+            6.5
+        ],
+        "consites": [
+            10,
+            9.875,
+            9.75,
+            9.625,
+            9.5,
+            9.375,
+            9.25,
+            9.125,
+            9.0,
+            8.875,
+            8.75,
+            8.625,
+            8.5
+        ],
+        "pam": [
+            8.6,
+            8.8,
+            9.0,
+            9.2,
+            9.4,
+            9.6,
+            9.8
+        ],
+        "prefix": [
+            10,
+            10,
+            10,
+            10,
+            10,
+            10
+        ],
+        "postfix": [
+            8.6,
+            8.8,
+            9.0,
+            9.2
+        ]
+    }
+}

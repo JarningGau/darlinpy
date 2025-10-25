@@ -124,7 +124,7 @@ def analyze_sequences(
     
     Args:
         sequences: 待分析的序列列表
-        config: 配置，可以是locus名称字符串或AmpliconConfig对象，默认为'Col1a1'
+        config: 配置，可以是locus名称字符串或AmpliconConfig对象，默认为'Col1a1'，可选"Col1a1", "Rosa", "Tigre"
         method: 调用方法 ('exact' 或 'coarse_grain')
         min_reads: 最小读取数
         dominant_threshold: 主导等位基因阈值

@@ -50,7 +50,7 @@ class CARLINAligner:
         # 编码参考序列
         self.reference_encoded = nt2int(self.reference_sequence)
         
-        print(f"✅ CARLIN比对器初始化成功 (locus: {locus})")
+        print(f"✅ CARLIN比对器初始化成功")
         print(f"   - 参考序列长度: {len(self.reference_sequence)} bp")
         print(f"   - 评分矩阵: {self.scoring_config.matrix_type}")
         print(f"   - Gap惩罚范围: {self.open_penalty_array.min():.1f}-{self.open_penalty_array.max():.1f}")
