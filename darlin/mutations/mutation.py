@@ -89,7 +89,8 @@ class Mutation:
             - 插入: g.100_101insACG
             - 复合: g.100_102delinsATG
         """
-        prefix = f"{reference_name}:g."
+        # prefix = f"{reference_name}:g."
+        prefix = ""
         
         if self.type == MutationType.SUBSTITUTION:
             if len(self.seq_old) == 1 and len(self.seq_new) == 1:

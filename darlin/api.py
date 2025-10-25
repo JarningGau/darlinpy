@@ -29,6 +29,7 @@ class AnalysisResult:
         alignment_scores: 每个序列的比对得分
         aligned_query: 对齐后的输入序列
         aligned_reference: 对齐后的参考序列
+        valid_sequences: 经过过滤的有效序列列表
         summary_stats: 汇总统计信息
         processing_time: 处理耗时(秒)
         config_used: 使用的配置名称
@@ -40,6 +41,7 @@ class AnalysisResult:
     summary_stats: Dict[str, Any] = field(default_factory=dict)  # 提供默认以避免dataclass参数顺序错误
     aligned_query: List[str] = field(default_factory=list)
     aligned_reference: List[str] = field(default_factory=list)
+    valid_sequences: List[str] = field(default_factory=list)
     processing_time: float = 0.0
     config_used: str = "OriginalCARLIN"
     method_used: str = "coarse_grain"
@@ -253,6 +255,7 @@ def analyze_sequences(
             summary_stats=summary_stats,
             aligned_query=[r["aligned_seq_obj"].get_seq() for r in alignment_results],
             aligned_reference=[r["aligned_seq_obj"].get_ref() for r in alignment_results],
+            valid_sequences=valid_sequences,
             processing_time=processing_time,
             config_used=str(config),
             method_used=method
