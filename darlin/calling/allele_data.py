@@ -1,7 +1,7 @@
 """
-CARLIN等位基因调用数据结构
+CARLIN allele calling data structures
 
-这个模块定义了等位基因调用过程中使用的核心数据结构。
+This module defines the core data structures used in the allele calling process.
 """
 
 from typing import List, Optional, Dict, Any, Union
@@ -13,15 +13,15 @@ from ..alignment.aligned_seq import AlignedSEQ
 @dataclass
 class AlleleCallResult:
     """
-    单个等位基因调用的结果
+    Result of a single allele call
     
     Attributes:
-        allele: 调用的等位基因序列 (AlignedSEQ对象)
-        constituents: 支持这个等位基因的序列索引列表
-        weight_contribution: 每个支持序列的权重
-        confidence: 调用的置信度 (0-1)
-        calling_method: 使用的调用方法 ('exact' 或 'coarse_grain')
-        dominant_fraction: 主导等位基因的比例
+        allele: Called allele sequence (AlignedSEQ object)
+        constituents: List of sequence indices supporting this allele
+        weight_contribution: Weight of each supporting sequence
+        confidence: Calling confidence (0-1)
+        calling_method: Calling method used ('exact' or 'coarse_grain')
+        dominant_fraction: Proportion of dominant allele
     """
     allele: Optional[AlignedSEQ]
     constituents: List[int]
@@ -31,51 +31,51 @@ class AlleleCallResult:
     dominant_fraction: float = 0.0
     
     def __post_init__(self):
-        """验证数据一致性"""
+        """Validate data consistency"""
         if self.allele is not None:
             if len(self.constituents) != len(self.weight_contribution):
-                raise ValueError("constituents和weight_contribution长度必须一致")
+                raise ValueError("constituents and weight_contribution must have the same length")
             
     @property
     def total_weight(self) -> float:
-        """返回支持这个等位基因的总权重"""
+        """Return total weight supporting this allele"""
         return sum(self.weight_contribution)
         
     @property
     def num_supporting_sequences(self) -> int:
-        """返回支持这个等位基因的序列数量"""
+        """Return number of sequences supporting this allele"""
         return len(self.constituents)
         
     @property
     def event_structure(self) -> Optional[str]:
-        """返回等位基因的事件结构"""
+        """Return event structure of the allele"""
         if self.allele is None:
             return None
         return ''.join(self.allele.get_event_structure())
         
     @property
     def sequence(self) -> Optional[str]:
-        """返回等位基因序列（去除gap）"""
+        """Return allele sequence (with gaps removed)"""
         if self.allele is None:
             return None
         return self.allele.get_seq().replace('-', '')
         
     def is_callable(self) -> bool:
-        """检查是否成功调用了等位基因"""
+        """Check if allele was successfully called"""
         return self.allele is not None
 
 
 @dataclass 
 class BulkAlleleCallResult:
     """
-    批量等位基因调用的结果
+    Result of bulk allele calling
     
     Attributes:
-        individual_results: 每个UMI/组的调用结果列表
-        summary_alleles: 汇总的等位基因列表
-        allele_frequencies: 每个等位基因的频率
-        total_callable_sequences: 可调用的序列总数
-        calling_parameters: 调用参数
+        individual_results: List of calling results for each UMI/group
+        summary_alleles: List of summary alleles
+        allele_frequencies: Frequency of each allele
+        total_callable_sequences: Total number of callable sequences
+        calling_parameters: Calling parameters
     """
     individual_results: List[AlleleCallResult]
     summary_alleles: List[AlignedSEQ]
@@ -84,44 +84,44 @@ class BulkAlleleCallResult:
     calling_parameters: Dict[str, Any]
     
     def __post_init__(self):
-        """验证数据一致性"""
+        """Validate data consistency"""
         if len(self.summary_alleles) != len(self.allele_frequencies):
-            raise ValueError("summary_alleles和allele_frequencies长度必须一致")
+            raise ValueError("summary_alleles and allele_frequencies must have the same length")
             
     @property
     def num_called_alleles(self) -> int:
-        """返回成功调用的等位基因数量"""
+        """Return number of successfully called alleles"""
         return len([r for r in self.individual_results if r.is_callable()])
         
     @property
     def calling_success_rate(self) -> float:
-        """返回调用成功率"""
+        """Return calling success rate"""
         if not self.individual_results:
             return 0.0
         return self.num_called_alleles / len(self.individual_results)
         
     @property
     def dominant_allele(self) -> Optional[AlignedSEQ]:
-        """返回最主导的等位基因"""
+        """Return the most dominant allele"""
         if not self.summary_alleles:
             return None
         return self.summary_alleles[0]
         
     @property 
     def dominant_frequency(self) -> float:
-        """返回最主导等位基因的频率"""
+        """Return frequency of the most dominant allele"""
         if not self.allele_frequencies:
             return 0.0
         return self.allele_frequencies[0]
         
     def get_allele_by_rank(self, rank: int) -> Optional[AlignedSEQ]:
-        """根据频率排名获取等位基因"""
+        """Get allele by frequency rank"""
         if rank < 0 or rank >= len(self.summary_alleles):
             return None
         return self.summary_alleles[rank]
         
     def get_frequency_by_rank(self, rank: int) -> float:
-        """根据频率排名获取等位基因频率"""
+        """Get allele frequency by rank"""
         if rank < 0 or rank >= len(self.allele_frequencies):
             return 0.0
         return self.allele_frequencies[rank]
@@ -129,15 +129,15 @@ class BulkAlleleCallResult:
 
 class AlleleCallStatistics:
     """
-    等位基因调用统计信息
+    Allele calling statistics
     """
     
     def __init__(self, results: Union[AlleleCallResult, BulkAlleleCallResult, List[AlleleCallResult]]):
         """
-        初始化统计计算器
+        Initialize statistics calculator
         
         Args:
-            results: 等位基因调用结果
+            results: Allele calling results
         """
         if isinstance(results, AlleleCallResult):
             self.individual_results = [results]
@@ -146,14 +146,14 @@ class AlleleCallStatistics:
         elif isinstance(results, list):
             self.individual_results = results
         else:
-            raise ValueError("不支持的结果类型")
+            raise ValueError("Unsupported result type")
             
     def compute_calling_metrics(self) -> Dict[str, float]:
         """
-        计算调用指标
+        Compute calling metrics
         
         Returns:
-            包含各种统计指标的字典
+            Dictionary containing various statistical metrics
         """
         callable_results = [r for r in self.individual_results if r.is_callable()]
         
@@ -194,10 +194,10 @@ class AlleleCallStatistics:
         
     def compute_event_distribution(self) -> Dict[str, int]:
         """
-        计算事件类型分布
+        Compute event type distribution
         
         Returns:
-            事件类型到计数的映射
+            Mapping from event type to count
         """
         event_counts = {}
         for result in self.individual_results:
@@ -210,10 +210,10 @@ class AlleleCallStatistics:
         
     def compute_method_distribution(self) -> Dict[str, int]:
         """
-        计算调用方法分布
+        Compute calling method distribution
         
         Returns:
-            调用方法到计数的映射
+            Mapping from calling method to count
         """
         method_counts = {}
         for result in self.individual_results:

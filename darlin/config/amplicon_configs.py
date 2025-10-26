@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-CARLIN扩增子配置模块
+CARLIN amplicon configuration module
 
-实现CARLIN特异性的序列配置和惩罚参数管理
+Implements CARLIN-specific sequence configuration and penalty parameter management
 """
 
 import json
@@ -14,7 +14,7 @@ from dataclasses import dataclass
 
 @dataclass
 class SequenceConfig:
-    """序列配置数据类"""
+    """Sequence configuration data class"""
     segments: List[str]
     pam: str
     prefix: str
@@ -24,19 +24,19 @@ class SequenceConfig:
     secondary_sequence: str
     
     def __post_init__(self):
-        """验证配置参数"""
+        """Validate configuration parameters"""
         if len(self.segments) != 10:
-            raise ValueError(f"CARLIN必须有10个segments，但得到了{len(self.segments)}个")
+            raise ValueError(f"CARLIN must have 10 segments, but got {len(self.segments)}")
         
-        # 验证每个segment长度为20bp
+        # Validate each segment length is 20bp
         for i, seg in enumerate(self.segments):
             if len(seg) != 20:
-                raise ValueError(f"Segment {i+1} 长度应为20bp，但得到了{len(seg)}bp")
+                raise ValueError(f"Segment {i+1} should be 20bp long, but got {len(seg)}bp")
 
 
 @dataclass 
 class PenaltyConfig:
-    """惩罚参数配置数据类"""
+    """Penalty parameter configuration data class"""
     init: float
     cutsites: List[float]
     consites: List[float]
@@ -45,48 +45,48 @@ class PenaltyConfig:
     postfix: List[float]
     
     def __post_init__(self):
-        """验证惩罚参数"""
+        """Validate penalty parameters"""
         if len(self.cutsites) != 7:
-            raise ValueError(f"cutsites惩罚应有7个值，得到{len(self.cutsites)}个")
+            raise ValueError(f"cutsites penalties should have 7 values, got {len(self.cutsites)}")
         if len(self.consites) != 13:
-            raise ValueError(f"consites惩罚应有13个值，得到{len(self.consites)}个")
+            raise ValueError(f"consites penalties should have 13 values, got {len(self.consites)}")
         if len(self.pam) != 7:
-            raise ValueError(f"pam惩罚应有7个值，得到{len(self.pam)}个")
+            raise ValueError(f"pam penalties should have 7 values, got {len(self.pam)}")
 
 
 class AmpliconConfig:
     """
-    CARLIN扩增子配置类
+    CARLIN amplicon configuration class
     
-    管理CARLIN序列结构、评分矩阵和位置特异性惩罚参数
+    Manages CARLIN sequence structure, scoring matrices and position-specific penalty parameters
     """
     
     def __init__(self, config_data: Optional[Dict] = None, config_file: Optional[str] = None):
         """
-        初始化配置
+        Initialize configuration
         
         Args:
-            config_data: 配置字典数据
-            config_file: JSON配置文件路径
+            config_data: Configuration dictionary data
+            config_file: JSON configuration file path
         """
         if config_file:
             self._load_from_file(config_file)
         elif config_data:
             self._load_from_dict(config_data)
         else:
-            raise ValueError("必须提供config_data或config_file")
+            raise ValueError("Must provide config_data or config_file")
         
-        # 构建完整的CARLIN序列
+        # Build complete CARLIN sequence
         self._build_carlin_sequence()
         
-        # 构建位置特异性惩罚数组
+        # Build position-specific penalty arrays
         self._build_penalty_arrays()
     
     def _load_from_file(self, config_file: str):
-        """从JSON文件加载配置"""
+        """Load configuration from JSON file"""
         config_path = Path(config_file)
         if not config_path.exists():
-            raise FileNotFoundError(f"配置文件不存在: {config_file}")
+            raise FileNotFoundError(f"Configuration file does not exist: {config_file}")
         
         with open(config_path, 'r', encoding='utf-8') as f:
             config_data = json.load(f)
@@ -94,8 +94,8 @@ class AmpliconConfig:
         self._load_from_dict(config_data)
     
     def _load_from_dict(self, config_data: Dict):
-        """从字典加载配置"""
-        # 解析序列配置
+        """Load configuration from dictionary"""
+        # Parse sequence configuration
         seq_data = config_data['sequence']
         self.sequence = SequenceConfig(
             segments=seq_data['segments'],
@@ -107,10 +107,10 @@ class AmpliconConfig:
             secondary_sequence=seq_data['SecondarySequence']
         )
         
-        # 解析匹配得分
+        # Parse match scores
         self.match_scores = config_data.get('match_score', {})
         
-        # 解析惩罚配置
+        # Parse penalty configuration
         open_data = config_data['open_penalty']
         self.open_penalty = PenaltyConfig(
             init=open_data['init'],
@@ -123,7 +123,7 @@ class AmpliconConfig:
         
         close_data = config_data['close_penalty']
         self.close_penalty = PenaltyConfig(
-            init=close_data.get('init', open_data['init']),  # 如果没有指定，使用open_penalty的init
+            init=close_data.get('init', open_data['init']),  # If not specified, use open_penalty's init
             cutsites=close_data['cutsites'],
             consites=close_data['consites'],
             pam=close_data['pam'],
@@ -132,23 +132,23 @@ class AmpliconConfig:
         )
     
     def _build_carlin_sequence(self):
-        """构建完整的CARLIN序列结构"""
-        # CARLIN内部结构: prefix + (segment + pam) x 10 - 最后一个pam + postfix
+        """Build complete CARLIN sequence structure"""
+        # CARLIN internal structure: prefix + (segment + pam) x 10 - last pam + postfix
         carlin_parts = [self.sequence.prefix]
         
-        # 添加10个 (segment + pam)，最后一个segment不加pam
+        # Add 10 (segment + pam), last segment without pam
         for i, segment in enumerate(self.sequence.segments):
             carlin_parts.append(segment)
-            if i < 9:  # 前9个segment后面加pam
+            if i < 9:  # First 9 segments followed by pam
                 carlin_parts.append(self.sequence.pam)
         
-        # 添加postfix
+        # Add postfix
         carlin_parts.append(self.sequence.postfix)
         
-        # 组装完整序列
+        # Assemble complete sequence
         self.carlin_sequence = ''.join(carlin_parts)
         
-        # 完整的扩增子序列: Primer5 + CARLIN + SecondarySequence + Primer3
+        # Complete amplicon sequence: Primer5 + CARLIN + SecondarySequence + Primer3
         self.full_sequence = (
             self.sequence.primer5 + 
             self.carlin_sequence + 
@@ -156,27 +156,27 @@ class AmpliconConfig:
             self.sequence.primer3
         )
         
-        # 计算各部分的位置信息
+        # Calculate position information for each part
         self._calculate_positions()
     
     def _calculate_positions(self):
-        """计算序列各部分的位置信息"""
+        """Calculate position information for sequence parts"""
         self.positions = {}
         
-        # Primer5位置
+        # Primer5 position
         primer5_start = 0
         primer5_end = len(self.sequence.primer5)
         self.positions['primer5'] = (primer5_start, primer5_end)
         
-        # CARLIN内部位置 (相对于CARLIN序列)
+        # CARLIN internal positions (relative to CARLIN sequence)
         carlin_start = primer5_end
         
-        # Prefix位置
+        # Prefix position
         prefix_start = 0
         prefix_end = len(self.sequence.prefix)
         self.positions['prefix'] = (prefix_start, prefix_end)
         
-        # Segments和PAMs的位置
+        # Segments and PAMs positions
         self.positions['segments'] = []
         self.positions['pams'] = []
         self.positions['cutsites'] = []
@@ -185,12 +185,12 @@ class AmpliconConfig:
         current_pos = prefix_end
         
         for i, segment in enumerate(self.sequence.segments):
-            # Segment位置
+            # Segment position
             segment_start = current_pos
             segment_end = current_pos + len(segment)
             self.positions['segments'].append((segment_start, segment_end))
             
-            # Consite (前13bp) 和 Cutsite (后7bp)
+            # Consite (first 13bp) and Cutsite (last 7bp)
             consite_start = segment_start
             consite_end = segment_start + 13
             cutsite_start = consite_end
@@ -201,97 +201,97 @@ class AmpliconConfig:
             
             current_pos = segment_end
             
-            # PAM位置 (前9个segment后面有PAM)
+            # PAM position (first 9 segments followed by PAM)
             if i < 9:
                 pam_start = current_pos
                 pam_end = current_pos + len(self.sequence.pam)
                 self.positions['pams'].append((pam_start, pam_end))
                 current_pos = pam_end
         
-        # Postfix位置
+        # Postfix position
         postfix_start = current_pos
         postfix_end = current_pos + len(self.sequence.postfix)
         self.positions['postfix'] = (postfix_start, postfix_end)
         
-        # 相对于完整序列的位置
+        # Positions relative to complete sequence
         self.positions['carlin'] = (carlin_start, carlin_start + len(self.carlin_sequence))
         
-        # Secondary sequence位置
+        # Secondary sequence position
         secondary_start = carlin_start + len(self.carlin_sequence)
         secondary_end = secondary_start + len(self.sequence.secondary_sequence)
         self.positions['secondary'] = (secondary_start, secondary_end)
         
-        # Primer3位置
+        # Primer3 position
         primer3_start = secondary_end
         primer3_end = primer3_start + len(self.sequence.primer3)
         self.positions['primer3'] = (primer3_start, primer3_end)
     
     def _build_penalty_arrays(self):
-        """构建位置特异性的惩罚数组"""
+        """Build position-specific penalty arrays"""
         carlin_length = len(self.carlin_sequence)
         
-        # 初始化惩罚数组
+        # Initialize penalty arrays
         self.open_penalty_array = np.full(carlin_length + 1, self.open_penalty.init, dtype=np.float64)
         self.close_penalty_array = np.full(carlin_length + 1, self.close_penalty.init, dtype=np.float64)
         
-        # 设置prefix惩罚
+        # Set prefix penalties
         prefix_start, prefix_end = self.positions['prefix']
         self._set_penalty_values(self.open_penalty_array, prefix_start, prefix_end, self.open_penalty.prefix)
         self._set_penalty_values(self.close_penalty_array, prefix_start, prefix_end, self.close_penalty.prefix)
         
-        # 设置各segment的consite和cutsite惩罚
+        # Set consite and cutsite penalties for each segment
         for i in range(10):
-            # Consite惩罚
+            # Consite penalties
             consite_start, consite_end = self.positions['consites'][i]
             self._set_penalty_values(self.open_penalty_array, consite_start, consite_end, self.open_penalty.consites)
             self._set_penalty_values(self.close_penalty_array, consite_start, consite_end, self.close_penalty.consites)
             
-            # Cutsite惩罚
+            # Cutsite penalties
             cutsite_start, cutsite_end = self.positions['cutsites'][i]
             self._set_penalty_values(self.open_penalty_array, cutsite_start, cutsite_end, self.open_penalty.cutsites)
             self._set_penalty_values(self.close_penalty_array, cutsite_start, cutsite_end, self.close_penalty.cutsites)
             
-            # PAM惩罚 (前9个)
+            # PAM penalties (first 9)
             if i < 9:
                 pam_start, pam_end = self.positions['pams'][i]
                 self._set_penalty_values(self.open_penalty_array, pam_start, pam_end, self.open_penalty.pam)
                 self._set_penalty_values(self.close_penalty_array, pam_start, pam_end, self.close_penalty.pam)
         
-        # 设置postfix惩罚
+        # Set postfix penalties
         postfix_start, postfix_end = self.positions['postfix']
         self._set_penalty_values(self.open_penalty_array, postfix_start, postfix_end, self.open_penalty.postfix)
         self._set_penalty_values(self.close_penalty_array, postfix_start, postfix_end, self.close_penalty.postfix)
     
     def _set_penalty_values(self, penalty_array: np.ndarray, start: int, end: int, values: List[float]):
-        """设置指定区域的惩罚值"""
+        """Set penalty values for specified region"""
         region_length = end - start
         if len(values) != region_length:
-            raise ValueError(f"惩罚值数量({len(values)})与区域长度({region_length})不匹配")
+            raise ValueError(f"Number of penalty values ({len(values)}) does not match region length ({region_length})")
         
         for i, value in enumerate(values):
             penalty_array[start + i] = value
     
     def get_reference_sequence(self) -> str:
-        """获取参考序列（仅CARLIN部分）"""
+        """Get reference sequence (CARLIN part only)"""
         return self.carlin_sequence
     
     def get_full_reference_sequence(self) -> str:
-        """获取完整的参考序列"""
+        """Get complete reference sequence"""
         return self.full_sequence
     
     def get_penalty_arrays(self) -> Tuple[np.ndarray, np.ndarray]:
-        """获取位置特异性惩罚数组"""
+        """Get position-specific penalty arrays"""
         return self.open_penalty_array.copy(), self.close_penalty_array.copy()
     
     def get_motif_info(self, position: int) -> Dict[str, any]:
-        """获取指定位置的motif信息"""
+        """Get motif information for specified position"""
         motif_info = {
             'type': 'unknown',
             'motif_id': None,
             'position_in_motif': None
         }
         
-        # 检查各个区域
+        # Check each region
         prefix_start, prefix_end = self.positions['prefix']
         if prefix_start <= position < prefix_end:
             motif_info.update({
@@ -301,10 +301,10 @@ class AmpliconConfig:
             })
             return motif_info
         
-        # 检查segments
+        # Check segments
         for i, (start, end) in enumerate(self.positions['segments']):
             if start <= position < end:
-                # 判断是consite还是cutsite
+                # Determine if consite or cutsite
                 consite_start, consite_end = self.positions['consites'][i]
                 if consite_start <= position < consite_end:
                     motif_info.update({
@@ -321,7 +321,7 @@ class AmpliconConfig:
                     })
                 return motif_info
         
-        # 检查PAMs
+        # Check PAMs
         for i, (start, end) in enumerate(self.positions['pams']):
             if start <= position < end:
                 motif_info.update({
@@ -331,7 +331,7 @@ class AmpliconConfig:
                 })
                 return motif_info
         
-        # 检查postfix
+        # Check postfix
         postfix_start, postfix_end = self.positions['postfix']
         if postfix_start <= position < postfix_end:
             motif_info.update({
@@ -343,23 +343,23 @@ class AmpliconConfig:
         return motif_info
     
     def summary(self) -> str:
-        """返回配置摘要信息"""
+        """Return configuration summary information"""
         lines = [
-            "=== CARLIN扩增子配置摘要 ===",
-            f"完整序列长度: {len(self.full_sequence)} bp",
-            f"CARLIN序列长度: {len(self.carlin_sequence)} bp",
-            f"Segments数量: {len(self.sequence.segments)}",
-            f"PAM序列: {self.sequence.pam}",
+            "=== CARLIN Amplicon Configuration Summary ===",
+            f"Complete sequence length: {len(self.full_sequence)} bp",
+            f"CARLIN sequence length: {len(self.carlin_sequence)} bp",
+            f"Number of segments: {len(self.sequence.segments)}",
+            f"PAM sequence: {self.sequence.pam}",
             f"Prefix: {self.sequence.prefix}",
             f"Postfix: {self.sequence.postfix}",
             "",
-            "=== 序列结构 ===",
+            "=== Sequence Structure ===",
             f"Primer5 ({len(self.sequence.primer5)} bp): {self.sequence.primer5}",
             f"CARLIN ({len(self.carlin_sequence)} bp): {self.carlin_sequence[:50]}...",
             f"Secondary ({len(self.sequence.secondary_sequence)} bp): {self.sequence.secondary_sequence}",
             f"Primer3 ({len(self.sequence.primer3)} bp): {self.sequence.primer3}",
             "",
-            "=== 惩罚参数范围 ===",
+            "=== Penalty Parameter Range ===",
             f"Open penalty: {self.open_penalty_array.min():.2f} - {self.open_penalty_array.max():.2f}",
             f"Close penalty: {self.close_penalty_array.min():.2f} - {self.close_penalty_array.max():.2f}"
         ]
@@ -368,42 +368,42 @@ class AmpliconConfig:
 
 def load_carlin_config_by_locus(locus: str = "Col1a1") -> AmpliconConfig:
     """
-    根据locus名称加载对应的CARLIN配置
+    Load corresponding CARLIN configuration by locus name
     
     Args:
-        locus: 位点名称，支持 "Col1a1", "Rosa", "Tigre"
+        locus: Locus name, supports "Col1a1", "Rosa", "Tigre"
     
     Returns:
-        AmpliconConfig: 对应的配置对象
+        AmpliconConfig: Corresponding configuration object
     """
-    # 验证locus参数
+    # Validate locus parameter
     valid_loci = ["Col1a1", "Rosa", "Tigre"]
     if locus not in valid_loci:
-        raise ValueError(f"不支持的locus: {locus}。支持的locus: {valid_loci}")
+        raise ValueError(f"Unsupported locus: {locus}. Supported loci: {valid_loci}")
     
-    # 构建配置文件路径
+    # Build configuration file path
     config_dir = Path(__file__).parent / "data"
     config_file = config_dir / f"array_{locus}.json"
     
     if not config_file.exists():
-        raise FileNotFoundError(f"找不到配置文件: {config_file}")
+        raise FileNotFoundError(f"Configuration file not found: {config_file}")
     
     return AmpliconConfig(config_file=str(config_file)) 
 
 
-# 预定义的配置
-ORIGINAL_CARLIN = None  # 将在首次访问时延迟加载
+# Predefined configurations
+ORIGINAL_CARLIN = None  # Will be lazily loaded on first access
 
 def get_original_carlin_config() -> AmpliconConfig:
-    """获取原始CARLIN配置（延迟加载）"""
+    """Get original CARLIN configuration (lazy loading)"""
     global ORIGINAL_CARLIN
     if ORIGINAL_CARLIN is None:
         ORIGINAL_CARLIN = load_carlin_config_by_locus("Col1a1")
     return ORIGINAL_CARLIN
 
-# 立即初始化配置
+# Initialize configuration immediately
 try:
     ORIGINAL_CARLIN = get_original_carlin_config()
 except FileNotFoundError:
-    # 如果找不到配置文件，使用硬编码的默认配置
+    # If configuration file not found, use hardcoded default configuration
     ORIGINAL_CARLIN = AmpliconConfig()

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-评分矩阵模块
+Scoring matrices module
 
-实现NUC44和其他核酸序列比对评分矩阵
+Implements NUC44 and other nucleic acid sequence alignment scoring matrices
 """
 
 import numpy as np
@@ -11,16 +11,16 @@ from typing import Dict, Tuple
 
 def create_nuc44_matrix() -> np.ndarray:
     """
-    创建NUC44核酸替换评分矩阵
+    Create NUC44 nucleic acid substitution scoring matrix
     
-    这是NCBI BLAST使用的标准核酸评分矩阵
-    索引顺序: 0=gap, 1=A, 2=C, 3=G, 4=T
+    This is the standard nucleic acid scoring matrix used by NCBI BLAST
+    Index order: 0=gap, 1=A, 2=C, 3=G, 4=T
     
     Returns:
-        np.ndarray: 5x5的评分矩阵，打平为25元素的一维数组
+        np.ndarray: 5x5 scoring matrix flattened to 25-element 1D array
     """
-    # NUC44矩阵 (5x5)
-    # 行/列顺序: gap(0), A(1), C(2), G(3), T(4)
+    # NUC44 matrix (5x5)
+    # Row/column order: gap(0), A(1), C(2), G(3), T(4)
     nuc44_2d = np.array([
         #    gap   A    C    G    T
         [   0,   0,   0,   0,   0],  # gap
@@ -30,20 +30,20 @@ def create_nuc44_matrix() -> np.ndarray:
         [   0,  -4,  -4,  -4,   5],  # T
     ], dtype=np.float64)
     
-    # 打平为一维数组，与cas9_align期望的格式一致
+    # Flatten to 1D array, consistent with cas9_align expected format
     return nuc44_2d.flatten()
 
 
 def create_simple_scoring_matrix(match_score: float = 5.0, mismatch_score: float = -4.0) -> np.ndarray:
     """
-    创建简单的匹配/不匹配评分矩阵
+    Create simple match/mismatch scoring matrix
     
     Args:
-        match_score: 匹配得分
-        mismatch_score: 不匹配得分
+        match_score: Match score
+        mismatch_score: Mismatch score
         
     Returns:
-        np.ndarray: 打平的5x5评分矩阵
+        np.ndarray: Flattened 5x5 scoring matrix
     """
     matrix = np.zeros(25, dtype=np.float64)
     
@@ -52,9 +52,9 @@ def create_simple_scoring_matrix(match_score: float = 5.0, mismatch_score: float
         for j in range(1, 5):
             idx = i * 5 + j
             if i == j:
-                matrix[idx] = match_score    # 匹配
+                matrix[idx] = match_score    # match
             else:
-                matrix[idx] = mismatch_score # 不匹配
+                matrix[idx] = mismatch_score # mismatch
     
     return matrix
 
@@ -62,25 +62,25 @@ def create_simple_scoring_matrix(match_score: float = 5.0, mismatch_score: float
 def create_transition_transversion_matrix(
     match_score: float = 5.0,
     transition_score: float = -1.0,  # A<->G, C<->T
-    transversion_score: float = -4.0  # 其他替换
+    transversion_score: float = -4.0  # other substitutions
 ) -> np.ndarray:
     """
-    创建考虑转换/颠换的评分矩阵
+    Create scoring matrix considering transitions/transversions
     
-    转换 (transition): A<->G, C<->T (通常更常见)
-    颠换 (transversion): A<->C, A<->T, G<->C, G<->T
+    Transition: A<->G, C<->T (usually more common)
+    Transversion: A<->C, A<->T, G<->C, G<->T
     
     Args:
-        match_score: 完全匹配得分
-        transition_score: 转换得分 (惩罚较轻)
-        transversion_score: 颠换得分 (惩罚较重)
+        match_score: Perfect match score
+        transition_score: Transition score (lighter penalty)
+        transversion_score: Transversion score (heavier penalty)
         
     Returns:
-        np.ndarray: 打平的5x5评分矩阵
+        np.ndarray: Flattened 5x5 scoring matrix
     """
     matrix = np.zeros(25, dtype=np.float64)
     
-    # 定义转换对
+    # Define transition pairs
     transitions = {(1, 3), (3, 1), (2, 4), (4, 2)}  # A<->G, C<->T
     
     for i in range(1, 5):
@@ -97,15 +97,15 @@ def create_transition_transversion_matrix(
 
 
 class ScoringConfig:
-    """评分配置类"""
+    """Scoring configuration class"""
     
     def __init__(self, matrix_type: str = "nuc44", **kwargs):
         """
-        初始化评分配置
+        Initialize scoring configuration
         
         Args:
-            matrix_type: 矩阵类型 ("nuc44", "simple", "transition_transversion")
-            **kwargs: 传递给矩阵创建函数的参数
+            matrix_type: Matrix type ("nuc44", "simple", "transition_transversion")
+            **kwargs: Parameters passed to matrix creation functions
         """
         self.matrix_type = matrix_type
         self.kwargs = kwargs
@@ -117,26 +117,26 @@ class ScoringConfig:
         elif matrix_type == "transition_transversion":
             self.substitution_matrix = create_transition_transversion_matrix(**kwargs)
         else:
-            raise ValueError(f"未知的矩阵类型: {matrix_type}")
+            raise ValueError(f"Unknown matrix type: {matrix_type}")
     
     def get_score(self, base1: int, base2: int) -> float:
         """
-        获取两个碱基之间的得分
+        Get score between two bases
         
         Args:
-            base1, base2: 碱基编码 (0=gap, 1=A, 2=C, 3=G, 4=T)
+            base1, base2: Base encoding (0=gap, 1=A, 2=C, 3=G, 4=T)
             
         Returns:
-            float: 替换得分
+            float: Substitution score
         """
         return self.substitution_matrix[base1 * 5 + base2]
     
     def summary(self) -> str:
-        """返回评分配置摘要"""
+        """Return scoring configuration summary"""
         lines = [
-            f"=== 评分矩阵配置 ({self.matrix_type}) ===",
+            f"=== Scoring Matrix Configuration ({self.matrix_type}) ===",
             "",
-            "评分矩阵 (行:查询序列, 列:参考序列):",
+            "Scoring matrix (row: query sequence, column: reference sequence):",
             "        gap     A     C     G     T"
         ]
         
@@ -151,11 +151,11 @@ class ScoringConfig:
         return "\n".join(lines)
 
 
-# 预定义的评分配置
+# Predefined scoring configurations
 DEFAULT_NUC44 = ScoringConfig("nuc44")
 DEFAULT_SIMPLE = ScoringConfig("simple", match_score=5.0, mismatch_score=-4.0)
 
 
 def get_default_scoring_config() -> ScoringConfig:
-    """获取默认的评分配置 (NUC44)"""
+    """Get default scoring configuration (NUC44)"""
     return DEFAULT_NUC44 

@@ -1,5 +1,5 @@
 """
-配置模块 - 包含CARLIN扩增子配置和相关常量
+Configuration module - Contains CARLIN amplicon configurations and related constants
 """
 
 from .amplicon_configs import AmpliconConfig, get_original_carlin_config, load_carlin_config_by_locus

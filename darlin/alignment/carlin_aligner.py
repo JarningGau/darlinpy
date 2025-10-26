@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-CARLIN特异性序列比对器
+CARLIN-specific sequence aligner
 
-集成CARLIN配置和cas9_align算法，提供高级比对接口
+Integrates CARLIN configuration and cas9_align algorithm to provide advanced alignment interface
 """
 
 import numpy as np
@@ -16,9 +16,9 @@ from ..config import AmpliconConfig, get_original_carlin_config, ScoringConfig, 
 
 class CARLINAligner:
     """
-    CARLIN特异性序列比对器
+    CARLIN-specific sequence aligner
     
-    提供针对CARLIN扩增子的高级比对功能，自动处理配置和参数
+    Provides advanced alignment functionality for CARLIN amplicons with automatic configuration and parameter handling
     """
     
     def __init__(self, 
@@ -26,14 +26,14 @@ class CARLINAligner:
                  amplicon_config: Optional[AmpliconConfig] = None,
                  scoring_config: Optional[ScoringConfig] = None):
         """
-        初始化比对器
+        Initialize aligner
         
         Args:
-            locus: 位点名称，用于选择对应的JSON配置模板，默认为"Col1a1"
-            amplicon_config: CARLIN扩增子配置，如果提供则优先使用
-            scoring_config: 评分配置，默认使用NUC44
+            locus: Locus name for selecting corresponding JSON configuration template, defaults to "Col1a1"
+            amplicon_config: CARLIN amplicon configuration, takes priority if provided
+            scoring_config: Scoring configuration, defaults to NUC44
         """
-        # 根据locus加载配置
+        # Load configuration based on locus
         if amplicon_config is None:
             from ..config.amplicon_configs import load_carlin_config_by_locus
             self.amplicon_config = load_carlin_config_by_locus(locus)
@@ -42,41 +42,41 @@ class CARLINAligner:
         
         self.scoring_config = scoring_config or get_default_scoring_config()
         
-        # 获取预计算的参数
+        # Get precomputed parameters
         self.reference_sequence = self.amplicon_config.get_reference_sequence()
         self.open_penalty_array, self.close_penalty_array = self.amplicon_config.get_penalty_arrays()
         self.substitution_matrix = self.scoring_config.substitution_matrix
         
-        # 编码参考序列
+        # Encode reference sequence
         self.reference_encoded = nt2int(self.reference_sequence)
         
-        print(f"✅ CARLIN比对器初始化成功")
-        print(f"   - 参考序列长度: {len(self.reference_sequence)} bp")
-        print(f"   - 评分矩阵: {self.scoring_config.matrix_type}")
-        print(f"   - Gap惩罚范围: {self.open_penalty_array.min():.1f}-{self.open_penalty_array.max():.1f}")
+        print(f"✅ CARLIN aligner initialized successfully")
+        print(f"   - Reference sequence length: {len(self.reference_sequence)} bp")
+        print(f"   - Scoring matrix: {self.scoring_config.matrix_type}")
+        print(f"   - Gap penalty range: {self.open_penalty_array.min():.1f}-{self.open_penalty_array.max():.1f}")
     
     def align_sequence(self, query_sequence: str, 
                       verbose: bool = False,
                       sanitize: bool = True) -> Dict:
         """
-        比对单个序列到CARLIN参考序列
+        Align a single sequence to CARLIN reference
         
         Args:
-            query_sequence: 查询序列
-            verbose: 是否显示详细信息
-            sanitize: 是否执行序列标准化
+            query_sequence: Query sequence
+            verbose: Whether to show detailed information
+            sanitize: Whether to perform sequence normalization
             
         Returns:
-            Dict: 比对结果字典
+            Dict: Alignment result dictionary
         """
-        # 输入验证
+        # Input validation
         if not query_sequence or not all(c in 'ACGTN-' for c in query_sequence.upper()):
-            raise ValueError("序列只能包含ACGTN-字符")
+            raise ValueError("Sequence can only contain ACGTN- characters")
         
-        # 编码查询序列
-        query_encoded = nt2int(query_sequence.upper().replace('N', 'A'))  # 将N替换为A
+        # Encode query sequence
+        query_encoded = nt2int(query_sequence.upper().replace('N', 'A'))  # Replace N with A
         
-        # 执行比对
+        # Execute alignment
         score, aligned_query, aligned_ref = cas9_align(
             query_encoded, 
             self.reference_encoded,
@@ -85,48 +85,48 @@ class CARLINAligner:
             self.substitution_matrix
         )
         
-        # 解码比对结果
+        # Decode alignment results
         aligned_query_str = int2nt(aligned_query)
         aligned_ref_str = int2nt(aligned_ref)
         
-        # 序列标准化（可选）
+        # Sequence normalization (optional)
         sanitized_aligned_seq = None
         if sanitize:
             try:
-                # 将比对结果分解为motifs
+                # Decompose alignment results into motifs
                 motif_boundaries = calculate_motif_boundaries(aligned_ref_str, self.amplicon_config)
                 aligned_seq_obj = desemble_sequence(aligned_query_str, aligned_ref_str, motif_boundaries)
                 
-                # 执行标准化
+                # Perform normalization
                 sanitized_seq = self._perform_sanitization(aligned_seq_obj)
                 
-                # 更新比对结果为标准化后的序列
+                # Update alignment results with normalized sequence
                 sanitized_aligned_query_str = sanitized_seq.get_seq()
                 sanitized_aligned_ref_str = sanitized_seq.get_ref()
                 sanitized_aligned_seq = sanitized_seq
                 
-                # 使用标准化后的序列进行后续分析
+                # Use normalized sequence for subsequent analysis
                 aligned_query_str = sanitized_aligned_query_str
                 aligned_ref_str = sanitized_aligned_ref_str
                 
             except Exception as e:
                 if verbose:
-                    print(f"⚠️  序列标准化失败: {e}")
-                    print("   继续使用原始比对结果")
+                    print(f"⚠️  Sequence normalization failed: {e}")
+                    print("   Continuing with original alignment results")
         
-        # 重新编码用于统计计算
+        # Re-encode for statistical calculation
         if sanitize and sanitized_aligned_seq:
-            # 使用标准化后的序列计算统计
+            # Use normalized sequence for statistics
             aligned_query_for_stats = nt2int(aligned_query_str)
             aligned_ref_for_stats = nt2int(aligned_ref_str) 
         else:
             aligned_query_for_stats = aligned_query
             aligned_ref_for_stats = aligned_ref
         
-        # 计算比对统计
+        # Calculate alignment statistics
         stats = self._calculate_alignment_stats(aligned_query_for_stats, aligned_ref_for_stats)
         
-        # 构建结果
+        # Build result
         result = {
             'query_sequence': query_sequence,
             'reference_sequence': self.reference_sequence,
@@ -147,26 +147,26 @@ class CARLINAligner:
     def align_sequences(self, sequences: List[str], 
                        verbose: bool = False) -> List[Dict]:
         """
-        批量比对多个序列
+        Batch align multiple sequences
         
         Args:
-            sequences: 序列列表
-            verbose: 是否显示详细信息
+            sequences: List of sequences
+            verbose: Whether to show detailed information
             
         Returns:
-            List[Dict]: 比对结果列表
+            List[Dict]: List of alignment results
         """
         results = []
         
         for i, seq in enumerate(sequences):
             if verbose:
-                print(f"\n=== 比对序列 {i+1}/{len(sequences)} ===")
+                print(f"\n=== Aligning sequence {i+1}/{len(sequences)} ===")
             
             try:
                 result = self.align_sequence(seq, verbose=verbose)
                 results.append(result)
             except Exception as e:
-                print(f"⚠️  序列 {i+1} 比对失败: {e}")
+                print(f"⚠️  Sequence {i+1} alignment failed: {e}")
                 results.append({
                     'query_sequence': seq,
                     'error': str(e),
@@ -177,7 +177,7 @@ class CARLINAligner:
     
     def _calculate_alignment_stats(self, aligned_query: np.ndarray, 
                                   aligned_ref: np.ndarray) -> Dict:
-        """计算比对统计信息"""
+        """Calculate alignment statistics"""
         matches = 0
         mismatches = 0
         query_gaps = 0
@@ -187,13 +187,13 @@ class CARLINAligner:
             q_base = aligned_query[i]
             r_base = aligned_ref[i]
             
-            if q_base == 0:  # 查询序列gap
+            if q_base == 0:  # Query sequence gap
                 query_gaps += 1
-            elif r_base == 0:  # 参考序列gap
+            elif r_base == 0:  # Reference sequence gap
                 ref_gaps += 1
-            elif q_base == r_base:  # 匹配
+            elif q_base == r_base:  # Match
                 matches += 1
-            else:  # 不匹配
+            else:  # Mismatch
                 mismatches += 1
         
         total_aligned = len(aligned_query)
@@ -211,7 +211,7 @@ class CARLINAligner:
     
     def _analyze_motifs(self, aligned_query: np.ndarray, 
                        aligned_ref: np.ndarray) -> Dict:
-        """分析各motif的比对情况"""
+        """Analyze alignment status for each motif"""
         motif_stats = {
             'prefix': {'matches': 0, 'mismatches': 0, 'gaps': 0},
             'segments': [{} for _ in range(10)],
@@ -219,20 +219,20 @@ class CARLINAligner:
             'postfix': {'matches': 0, 'mismatches': 0, 'gaps': 0}
         }
         
-        # 分析每个位置的motif信息
-        ref_pos = 0  # 参考序列的实际位置
+        # Analyze motif information for each position
+        ref_pos = 0  # Actual position in reference sequence
         
         for i in range(len(aligned_query)):
             q_base = aligned_query[i]
             r_base = aligned_ref[i]
             
-            # 只有当参考序列不是gap时才分析motif
+            # Only analyze motif when reference sequence is not a gap
             if r_base != 0:
                 motif_info = self.amplicon_config.get_motif_info(ref_pos)
                 motif_type = motif_info['type']
                 motif_id = motif_info['motif_id']
                 
-                # 统计匹配/不匹配/gap
+                # Count matches/mismatches/gaps
                 if q_base == 0:
                     event = 'gaps'
                 elif q_base == r_base:
@@ -240,7 +240,7 @@ class CARLINAligner:
                 else:
                     event = 'mismatches'
                 
-                # 更新相应motif的统计
+                # Update statistics for corresponding motif
                 if motif_type in ['prefix', 'postfix']:
                     motif_stats[motif_type][event] += 1
                 elif motif_type in ['consite', 'cutsite']:
@@ -263,24 +263,24 @@ class CARLINAligner:
         return motif_stats
     
     def _print_alignment_result(self, result: Dict):
-        """打印比对结果"""
-        print(f"查询序列长度: {len(result['query_sequence'])} bp")
-        print(f"比对得分: {result['alignment_score']:.2f}")
+        """Print alignment results"""
+        print(f"Query sequence length: {len(result['query_sequence'])} bp")
+        print(f"Alignment score: {result['alignment_score']:.2f}")
         
         stats = result['statistics']
-        print(f"比对统计:")
-        print(f"  - 比对长度: {stats['aligned_length']}")
-        print(f"  - 匹配: {stats['matches']} ({stats['identity']*100:.1f}%)")
-        print(f"  - 不匹配: {stats['mismatches']}")
-        print(f"  - 查询gaps: {stats['query_gaps']}")
-        print(f"  - 参考gaps: {stats['reference_gaps']}")
+        print(f"Alignment statistics:")
+        print(f"  - Aligned length: {stats['aligned_length']}")
+        print(f"  - Matches: {stats['matches']} ({stats['identity']*100:.1f}%)")
+        print(f"  - Mismatches: {stats['mismatches']}")
+        print(f"  - Query gaps: {stats['query_gaps']}")
+        print(f"  - Reference gaps: {stats['reference_gaps']}")
         
-        # 显示比对结果
-        print("\n比对结果:")
+        # Show alignment results
+        print("\nAlignment results:")
         aligned_query = result['aligned_query']
         aligned_ref = result['aligned_reference']
         
-        # 分段显示，每行60个字符
+        # Display in segments, 60 characters per line
         line_length = 60
         for start in range(0, len(aligned_query), line_length):
             end = min(start + line_length, len(aligned_query))
@@ -288,7 +288,7 @@ class CARLINAligner:
             query_line = aligned_query[start:end]
             ref_line = aligned_ref[start:end]
             
-            # 构建匹配标记行
+            # Build match indicator line
             match_line = ""
             for i in range(len(query_line)):
                 if query_line[i] == ref_line[i] and query_line[i] != '-':
@@ -304,35 +304,35 @@ class CARLINAligner:
             print()
     
     def get_config_summary(self) -> str:
-        """获取配置摘要"""
+        """Get configuration summary"""
         lines = [
-            "=== CARLIN比对器配置 ===",
-            f"参考序列: {self.reference_sequence[:50]}...",
-            f"序列长度: {len(self.reference_sequence)} bp",
-            f"评分矩阵: {self.scoring_config.matrix_type}",
-            f"匹配得分: {self.scoring_config.get_score(1, 1)}",
-            f"不匹配得分: {self.scoring_config.get_score(1, 2)}",
-            f"Gap惩罚范围: {self.open_penalty_array.min():.1f} - {self.open_penalty_array.max():.1f}",
-            f"Segments数量: {len(self.amplicon_config.sequence.segments)}",
-            f"PAM序列: {self.amplicon_config.sequence.pam}"
+            "=== CARLIN Aligner Configuration ===",
+            f"Reference sequence: {self.reference_sequence[:50]}...",
+            f"Sequence length: {len(self.reference_sequence)} bp",
+            f"Scoring matrix: {self.scoring_config.matrix_type}",
+            f"Match score: {self.scoring_config.get_score(1, 1)}",
+            f"Mismatch score: {self.scoring_config.get_score(1, 2)}",
+            f"Gap penalty range: {self.open_penalty_array.min():.1f} - {self.open_penalty_array.max():.1f}",
+            f"Number of segments: {len(self.amplicon_config.sequence.segments)}",
+            f"PAM sequence: {self.amplicon_config.sequence.pam}"
         ]
         return "\n".join(lines)
     
     def _perform_sanitization(self, aligned_seq: AlignedSEQ) -> AlignedSEQ:
         """
-        执行序列标准化
+        Perform sequence normalization
         
         Args:
-            aligned_seq: 分解后的比对序列对象
+            aligned_seq: Decomposed alignment sequence object
             
         Returns:
-            标准化后的AlignedSEQ对象
+            Normalized AlignedSEQ object
         """
-        # 步骤1: Prefix/Postfix标准化
+        # Step 1: Prefix/Postfix normalization
         sanitized_seq = SequenceSanitizer.sanitize_prefix_postfix(aligned_seq)
         
-        # 步骤2: 保守区域标准化
-        # 需要确定cutsite motif的索引
+        # Step 2: Conserved region normalization
+        # Need to determine cutsite motif indices
         cutsite_indices = self._get_cutsite_motif_indices()
         sanitized_seq = SequenceSanitizer.sanitize_conserved_regions(sanitized_seq, cutsite_indices)
         
@@ -340,13 +340,13 @@ class CARLINAligner:
     
     def _get_cutsite_motif_indices(self) -> List[int]:
         """
-        获取cutsite motif在motif列表中的索引
+        Get cutsite motif indices in motif list
         
-        根据CARLIN配置结构，motif顺序为：
+        According to CARLIN configuration structure, motif order is:
         prefix, consite1, cutsite1, pam1, consite2, cutsite2, pam2, ..., consite10, cutsite10, postfix
         
         Returns:
-            cutsite motif的索引列表
+            List of cutsite motif indices
         """
         cutsite_indices = []
         motif_index = 0
@@ -354,39 +354,39 @@ class CARLINAligner:
         # Prefix (index 0)
         motif_index += 1
         
-        # 10个segments，每个包含consite和cutsite
+        # 10 segments, each containing consite and cutsite
         for i in range(10):
             # Consite
             motif_index += 1
             
-            # Cutsite (这是我们要标记的)
+            # Cutsite (this is what we want to mark)
             cutsite_indices.append(motif_index)
             motif_index += 1
             
-            # PAM (前9个segment后面有PAM)
+            # PAM (first 9 segments have PAM after them)
             if i < 9:
                 motif_index += 1
         
-        # Postfix已经在最后
+        # Postfix is already at the end
         
         return cutsite_indices
 
 
 def create_default_aligner() -> CARLINAligner:
-    """创建默认的CARLIN比对器"""
+    """Create default CARLIN aligner"""
     return CARLINAligner()
 
 
 def align_to_carlin(sequence: str, verbose: bool = True) -> Dict:
     """
-    便捷函数：将单个序列比对到CARLIN参考序列
+    Convenience function: align a single sequence to CARLIN reference sequence
     
     Args:
-        sequence: 查询序列
-        verbose: 是否显示详细信息
+        sequence: Query sequence
+        verbose: Whether to show detailed information
         
     Returns:
-        Dict: 比对结果
+        Dict: Alignment result
     """
     aligner = create_default_aligner()
     return aligner.align_sequence(sequence, verbose=verbose) 

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-CARLIN比对序列数据结构和标准化功能
+CARLIN alignment sequence data structures and normalization functionality
 
-实现AlignedSEQ、AlignedSEQMotif类以及prefix/postfix和保守区域的标准化算法
+Implements AlignedSEQ, AlignedSEQMotif classes and normalization algorithms for prefix/postfix and conserved regions
 """
 
 from typing import List, Tuple, Optional, Union
@@ -11,21 +11,21 @@ import numpy as np
 
 class AlignedSEQMotif:
     """
-    比对的序列motif片段
+    Aligned sequence motif fragment
     
-    表示比对序列中的一个motif片段，包含序列、参考序列和事件类型
+    Represents a motif fragment in an aligned sequence, containing sequence, reference sequence and event type
     """
     
     def __init__(self, seq: str, ref: str):
         """
-        初始化motif
+        Initialize motif
         
         Args:
-            seq: 查询序列片段
-            ref: 参考序列片段
+            seq: Query sequence fragment
+            ref: Reference sequence fragment
         """
         if len(seq) != len(ref):
-            raise ValueError(f"序列长度({len(seq)})与参考序列长度({len(ref)})不匹配")
+            raise ValueError(f"Sequence length ({len(seq)}) does not match reference sequence length ({len(ref)})")
         
         self.seq = seq
         self.ref = ref
@@ -33,19 +33,19 @@ class AlignedSEQMotif:
     
     def _classify_motif_event(self, seq: str, ref: str) -> str:
         """
-        分类motif事件类型
+        Classify motif event type
         
         Args:
-            seq: 查询序列
-            ref: 参考序列
+            seq: Query sequence
+            ref: Reference sequence
             
         Returns:
-            str: 事件类型
-                'N' - No change (无变化)
-                'M' - Mismatch (错配)
-                'D' - Deletion (删除)
-                'I' - Insertion (插入)
-                'E' - Empty (空)
+            str: Event type
+                'N' - No change
+                'M' - Mismatch
+                'D' - Deletion
+                'I' - Insertion
+                'E' - Empty
         """
         if seq == ref:
             return 'N'
@@ -65,38 +65,38 @@ class AlignedSEQMotif:
 
 class AlignedSEQ:
     """
-    完整的比对序列对象
+    Complete aligned sequence object
     
-    由多个AlignedSEQMotif组成，表示完整的比对序列
+    Composed of multiple AlignedSEQMotif objects, representing a complete aligned sequence
     """
     
     def __init__(self, seq_segments: List[str], ref_segments: List[str]):
         """
-        初始化比对序列
+        Initialize aligned sequence
         
         Args:
-            seq_segments: 查询序列的motif片段列表
-            ref_segments: 参考序列的motif片段列表
+            seq_segments: List of motif fragments for query sequence
+            ref_segments: List of motif fragments for reference sequence
         """
         if len(seq_segments) != len(ref_segments):
-            raise ValueError(f"序列segments数量({len(seq_segments)})与参考segments数量({len(ref_segments)})不匹配")
+            raise ValueError(f"Number of sequence segments ({len(seq_segments)}) does not match number of reference segments ({len(ref_segments)})")
         
         self.motifs = [AlignedSEQMotif(seq, ref) for seq, ref in zip(seq_segments, ref_segments)]
     
     def get_seq(self) -> str:
-        """获取完整的查询序列"""
+        """Get complete query sequence"""
         return ''.join(motif.seq for motif in self.motifs)
     
     def get_ref(self) -> str:
-        """获取完整的参考序列"""
+        """Get complete reference sequence"""
         return ''.join(motif.ref for motif in self.motifs)
     
     def get_event_structure(self) -> List[str]:
-        """获取事件结构"""
+        """Get event structure"""
         return [motif.event for motif in self.motifs]
     
     def copy(self) -> 'AlignedSEQ':
-        """创建深拷贝"""
+        """Create deep copy"""
         seq_segments = [motif.seq for motif in self.motifs]
         ref_segments = [motif.ref for motif in self.motifs]
         return AlignedSEQ(seq_segments, ref_segments)
@@ -108,25 +108,25 @@ class AlignedSEQ:
 
 class SequenceSanitizer:
     """
-    序列标准化器
+    Sequence normalizer
     
-    实现CARLIN序列的prefix/postfix和保守区域标准化
+    Implements normalization for CARLIN sequence prefix/postfix and conserved regions
     """
     
     @staticmethod
     def sanitize_prefix_postfix(aligned_seqs: Union[AlignedSEQ, List[AlignedSEQ]]) -> Union[AlignedSEQ, List[AlignedSEQ]]:
         """
-        清理前缀和后缀的非功能性插入
+        Clean up non-functional insertions in prefix and suffix
         
-        移除在CARLIN前缀和后缀区域的插入，这些通常是PCR人工制品或测序错误
+        Remove insertions in CARLIN prefix and suffix regions, which are usually PCR artifacts or sequencing errors
         
         Args:
-            aligned_seqs: 单个AlignedSEQ或AlignedSEQ列表
+            aligned_seqs: Single AlignedSEQ or list of AlignedSEQ
             
         Returns:
-            标准化后的AlignedSEQ或列表
+            Normalized AlignedSEQ or list
         """
-        # 处理单个对象的情况
+        # Handle single object case
         is_single = False
         if isinstance(aligned_seqs, AlignedSEQ):
             is_single = True
@@ -141,43 +141,43 @@ class SequenceSanitizer:
             event_structure = aligned_seq.get_event_structure()
             motifs = aligned_seq.motifs.copy()
             
-            # 处理头部插入 (prefix)
+            # Handle head insertions (prefix)
             if event_structure and event_structure[0] == 'I':
                 first_motif = motifs[0]
                 ref_seq = first_motif.ref
                 
-                # 找到参考序列中第一个非gap字符的位置
+                # Find position of first non-gap character in reference sequence
                 first_non_gap = None
                 for i, char in enumerate(ref_seq):
                     if char != '-':
                         first_non_gap = i
                         break
                 
-                # 如果开头有gap，则修剪
+                # If there are gaps at the beginning, trim them
                 if first_non_gap is not None and first_non_gap > 0:
                     trimmed_seq = first_motif.seq[first_non_gap:]
                     trimmed_ref = first_motif.ref[first_non_gap:]
                     motifs[0] = AlignedSEQMotif(trimmed_seq, trimmed_ref)
             
-            # 处理尾部插入 (postfix)
+            # Handle tail insertions (postfix)
             if event_structure and event_structure[-1] == 'I':
                 last_motif = motifs[-1]
                 ref_seq = last_motif.ref
                 
-                # 找到参考序列中最后一个非gap字符的位置
+                # Find position of last non-gap character in reference sequence
                 last_non_gap = None
                 for i in range(len(ref_seq) - 1, -1, -1):
                     if ref_seq[i] != '-':
                         last_non_gap = i
                         break
                 
-                # 如果结尾有gap，则修剪
+                # If there are gaps at the end, trim them
                 if last_non_gap is not None and last_non_gap < len(ref_seq) - 1:
                     trimmed_seq = last_motif.seq[:last_non_gap + 1]
                     trimmed_ref = last_motif.ref[:last_non_gap + 1]
                     motifs[-1] = AlignedSEQMotif(trimmed_seq, trimmed_ref)
             
-            # 重新构建AlignedSEQ
+            # Rebuild AlignedSEQ
             seq_segments = [motif.seq for motif in motifs]
             ref_segments = [motif.ref for motif in motifs]
             result_seqs.append(AlignedSEQ(seq_segments, ref_segments))
@@ -188,18 +188,18 @@ class SequenceSanitizer:
     def sanitize_conserved_regions(aligned_seqs: Union[AlignedSEQ, List[AlignedSEQ]], 
                                  cutsite_motif_indices: List[int]) -> Union[AlignedSEQ, List[AlignedSEQ]]:
         """
-        清理保守区域的测序错误
+        Clean up sequencing errors in conserved regions
         
-        将非cutsite motif中的错配恢复为参考序列，因为这些区域在生物学上是保守的
+        Restore mismatches in non-cutsite motifs to reference sequence, as these regions are biologically conserved
         
         Args:
-            aligned_seqs: 单个AlignedSEQ或AlignedSEQ列表
-            cutsite_motif_indices: cutsite motif的索引列表
+            aligned_seqs: Single AlignedSEQ or list of AlignedSEQ
+            cutsite_motif_indices: List of cutsite motif indices
             
         Returns:
-            标准化后的AlignedSEQ或列表
+            Normalized AlignedSEQ or list
         """
-        # 处理单个对象的情况
+        # Handle single object case
         is_single = False
         if isinstance(aligned_seqs, AlignedSEQ):
             is_single = True
@@ -214,33 +214,33 @@ class SequenceSanitizer:
             event_structure = aligned_seq.get_event_structure()
             motifs = aligned_seq.motifs.copy()
             
-            # 原始序列长度（用于验证）
+            # Original sequence length (for validation)
             original_length = len(aligned_seq.get_seq())
             
-            # 标识需要清理的motifs
-            # 只清理错配('M')且不是cutsite的motifs
+            # Identify motifs that need cleaning
+            # Only clean mismatches ('M') that are not cutsites
             motifs_to_clean = []
             for i, (event, motif) in enumerate(zip(event_structure, motifs)):
                 if event == 'M' and i not in cutsite_motif_indices:
-                    # 确保该motif没有gaps
+                    # Ensure this motif has no gaps
                     if '-' not in motif.seq and '-' not in motif.ref:
                         motifs_to_clean.append(i)
             
-            # 执行清理：将错配的序列恢复为参考序列
+            # Execute cleaning: restore mismatched sequences to reference sequence
             for i in motifs_to_clean:
                 old_motif = motifs[i]
-                # 将查询序列替换为参考序列
+                # Replace query sequence with reference sequence
                 motifs[i] = AlignedSEQMotif(old_motif.ref, old_motif.ref)
             
-            # 重新构建AlignedSEQ
+            # Rebuild AlignedSEQ
             seq_segments = [motif.seq for motif in motifs]
             ref_segments = [motif.ref for motif in motifs]
             cleaned_seq = AlignedSEQ(seq_segments, ref_segments)
             
-            # 验证序列长度没有改变
+            # Validate that sequence length has not changed
             new_length = len(cleaned_seq.get_seq())
             if new_length != original_length:
-                raise RuntimeError(f"标准化后序列长度改变: {original_length} -> {new_length}")
+                raise RuntimeError(f"Sequence length changed after normalization: {original_length} -> {new_length}")
             
             result_seqs.append(cleaned_seq)
         
@@ -250,67 +250,67 @@ class SequenceSanitizer:
 def desemble_sequence(aligned_query: str, aligned_ref: str, 
                      motif_boundaries: List[Tuple[int, int]]) -> AlignedSEQ:
     """
-    将比对结果分解为motifs
+    Decompose alignment results into motifs
     
     Args:
-        aligned_query: 比对后的查询序列
-        aligned_ref: 比对后的参考序列
-        motif_boundaries: motif边界列表，每个元素为(start, end)
+        aligned_query: Aligned query sequence
+        aligned_ref: Aligned reference sequence
+        motif_boundaries: List of motif boundaries, each element is (start, end)
         
     Returns:
-        AlignedSEQ对象
+        AlignedSEQ object
     """
     if len(aligned_query) != len(aligned_ref):
-        raise ValueError(f"比对序列长度不匹配: {len(aligned_query)} vs {len(aligned_ref)}")
+        raise ValueError(f"Aligned sequence lengths do not match: {len(aligned_query)} vs {len(aligned_ref)}")
     
     seq_segments = []
     ref_segments = []
     
     for start, end in motif_boundaries:
         if start < 0 or end > len(aligned_query) or start >= end:
-            raise ValueError(f"无效的motif边界: ({start}, {end})")
+            raise ValueError(f"Invalid motif boundary: ({start}, {end})")
         
         seq_segments.append(aligned_query[start:end])
         ref_segments.append(aligned_ref[start:end])
     
     result = AlignedSEQ(seq_segments, ref_segments)
     
-    # 验证分解结果
+    # Validate decomposition results
     if result.get_seq() != aligned_query:
-        raise RuntimeError("分解后序列与原始序列不匹配")
+        raise RuntimeError("Decomposed sequence does not match original sequence")
     if result.get_ref() != aligned_ref:
-        raise RuntimeError("分解后参考序列与原始序列不匹配")
+        raise RuntimeError("Decomposed reference sequence does not match original sequence")
     
     return result
 
 
 def calculate_motif_boundaries(aligned_ref: str, carlin_config) -> List[Tuple[int, int]]:
     """
-    计算motif边界
+    Calculate motif boundaries
     
-    基于比对后的参考序列和CARLIN配置计算各motif的边界
+    Calculate boundaries for each motif based on aligned reference sequence and CARLIN configuration
     
     Args:
-        aligned_ref: 比对后的参考序列
-        carlin_config: CARLIN配置对象
+        aligned_ref: Aligned reference sequence
+        carlin_config: CARLIN configuration object
         
     Returns:
-        motif边界列表
+        List of motif boundaries
     """
-    # 找到参考序列中非gap位置
+    # Find non-gap positions in reference sequence
     ref_positions = [i for i, char in enumerate(aligned_ref) if char != '-']
     
     if len(ref_positions) != len(carlin_config.carlin_sequence):
-        raise ValueError(f"参考序列非gap位置数量({len(ref_positions)})与CARLIN序列长度({len(carlin_config.carlin_sequence)})不匹配")
+        raise ValueError(f"Number of non-gap positions in reference sequence ({len(ref_positions)}) does not match CARLIN sequence length ({len(carlin_config.carlin_sequence)})")
     
-    # 获取CARLIN内部的motif边界（相对于原始CARLIN序列）
+    # Get CARLIN internal motif boundaries (relative to original CARLIN sequence)
     carlin_boundaries = []
     
     # Prefix
     prefix_start, prefix_end = carlin_config.positions['prefix']
     carlin_boundaries.append((prefix_start, prefix_end))
     
-    # Segments和PAMs
+    # Segments and PAMs
     for i in range(10):
         # Consite
         consite_start, consite_end = carlin_config.positions['consites'][i]
@@ -320,7 +320,7 @@ def calculate_motif_boundaries(aligned_ref: str, carlin_config) -> List[Tuple[in
         cutsite_start, cutsite_end = carlin_config.positions['cutsites'][i]
         carlin_boundaries.append((cutsite_start, cutsite_end))
         
-        # PAM (前9个segment后面有PAM)
+        # PAM (first 9 segments have PAM after them)
         if i < 9:
             pam_start, pam_end = carlin_config.positions['pams'][i]
             carlin_boundaries.append((pam_start, pam_end))
@@ -329,26 +329,26 @@ def calculate_motif_boundaries(aligned_ref: str, carlin_config) -> List[Tuple[in
     postfix_start, postfix_end = carlin_config.positions['postfix']
     carlin_boundaries.append((postfix_start, postfix_end))
     
-    # 将CARLIN边界映射到比对序列边界
+    # Map CARLIN boundaries to alignment sequence boundaries
     aligned_boundaries = []
     for carlin_start, carlin_end in carlin_boundaries:
         aligned_start = ref_positions[carlin_start]
-        aligned_end = ref_positions[carlin_end - 1] + 1  # end是exclusive的
+        aligned_end = ref_positions[carlin_end - 1] + 1  # end is exclusive
         aligned_boundaries.append((aligned_start, aligned_end))
     
-    # 处理gaps：确保边界覆盖所有比对序列
-    # 调整第一个边界的开始和最后一个边界的结束
+    # Handle gaps: ensure boundaries cover all aligned sequences
+    # Adjust start of first boundary and end of last boundary
     if aligned_boundaries:
         aligned_boundaries[0] = (0, aligned_boundaries[0][1])
         aligned_boundaries[-1] = (aligned_boundaries[-1][0], len(aligned_ref))
         
-        # 处理中间的gaps
+        # Handle gaps in between
         for i in range(len(aligned_boundaries) - 1):
             current_end = aligned_boundaries[i][1]
             next_start = aligned_boundaries[i + 1][0]
             
             if current_end < next_start:
-                # 有gap，将gap分配给下一个motif
+                # There is a gap, assign gap to next motif
                 aligned_boundaries[i + 1] = (current_end, aligned_boundaries[i + 1][1])
     
     return aligned_boundaries 

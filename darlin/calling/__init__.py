@@ -1,10 +1,10 @@
 """
-CARLIN等位基因调用模块
+CARLIN allele calling module
 
-这个模块提供了完整的等位基因调用功能，包括：
-- 精确和粗粒度调用算法
-- 等位基因调用结果数据结构
-- 统计分析功能
+This module provides complete allele calling functionality, including:
+- Exact and coarse-grained calling algorithms
+- Allele calling result data structures
+- Statistical analysis functions
 """
 
 from .allele_caller import AlleleCaller

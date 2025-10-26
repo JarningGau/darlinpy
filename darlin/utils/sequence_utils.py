@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """
-序列处理工具函数
+Sequence processing utility functions
 
-提供CARLIN分析所需的基础DNA序列处理功能
+Provides basic DNA sequence processing functionality required for CARLIN analysis
 """
 
 from typing import List, Tuple, Dict
 from collections import Counter
 
 
-# DNA序列相关常量
+# DNA sequence related constants
 DNA_BASES = set('ATCG')
 DNA_BASES_AMBIGUOUS = set('ATCGRYSWKMBDHVN')
 COMPLEMENT_MAP = {
@@ -22,13 +22,13 @@ COMPLEMENT_MAP = {
 
 def reverse_complement(seq: str) -> str:
     """
-    计算DNA序列的反向互补序列
+    Calculate reverse complement of DNA sequence
     
     Args:
-        seq: DNA序列字符串
+        seq: DNA sequence string
         
     Returns:
-        str: 反向互补序列
+        str: Reverse complement sequence
         
     Examples:
         >>> reverse_complement("ATCG")
@@ -37,26 +37,26 @@ def reverse_complement(seq: str) -> str:
     if not seq:
         return ""
     
-    # 转换为大写并验证
+    # Convert to uppercase and validate
     seq = seq.upper()
     if not is_valid_dna(seq, allow_ambiguous=True):
-        raise ValueError(f"无效的DNA序列: {seq}")
+        raise ValueError(f"Invalid DNA sequence: {seq}")
     
-    # 生成反向互补序列
+    # Generate reverse complement sequence
     complement = ''.join(COMPLEMENT_MAP.get(base, 'N') for base in seq)
     return complement[::-1]
 
 
 def is_valid_dna(seq: str, allow_ambiguous: bool = False) -> bool:
     """
-    验证是否为有效的DNA序列
+    Validate if sequence is valid DNA
     
     Args:
-        seq: 待验证的序列
-        allow_ambiguous: 是否允许模糊碱基
+        seq: Sequence to validate
+        allow_ambiguous: Whether to allow ambiguous bases
         
     Returns:
-        bool: 是否为有效DNA序列
+        bool: Whether sequence is valid DNA
     """
     if not seq:
         return True
@@ -69,14 +69,14 @@ def is_valid_dna(seq: str, allow_ambiguous: bool = False) -> bool:
 
 def clean_sequence(seq: str, remove_chars: str = "- \n\t") -> str:
     """
-    清理序列，移除指定字符
+    Clean sequence by removing specified characters
     
     Args:
-        seq: 原始序列
-        remove_chars: 要移除的字符
+        seq: Original sequence
+        remove_chars: Characters to remove
         
     Returns:
-        str: 清理后的序列
+        str: Cleaned sequence
     """
     if not seq:
         return ""
@@ -90,20 +90,20 @@ def clean_sequence(seq: str, remove_chars: str = "- \n\t") -> str:
 
 def calculate_gc_content(seq: str) -> float:
     """
-    计算GC含量
+    Calculate GC content
     
     Args:
-        seq: DNA序列
+        seq: DNA sequence
         
     Returns:
-        float: GC含量百分比 (0-100)
+        float: GC content percentage (0-100)
     """
     if not seq:
         return 0.0
     
     seq = clean_sequence(seq)
     if not is_valid_dna(seq):
-        raise ValueError(f"无效的DNA序列: {seq}")
+        raise ValueError(f"Invalid DNA sequence: {seq}")
     
     gc_count = seq.count('G') + seq.count('C')
     return (gc_count / len(seq)) * 100 if len(seq) > 0 else 0.0
@@ -111,20 +111,20 @@ def calculate_gc_content(seq: str) -> float:
 
 def count_nucleotides(seq: str) -> Dict[str, int]:
     """
-    统计核苷酸数量
+    Count nucleotide frequencies
     
     Args:
-        seq: DNA序列
+        seq: DNA sequence
         
     Returns:
-        Dict[str, int]: 各核苷酸的数量
+        Dict[str, int]: Count of each nucleotide
     """
     if not seq:
         return {'A': 0, 'T': 0, 'G': 0, 'C': 0}
     
     seq = clean_sequence(seq)
     if not is_valid_dna(seq):
-        raise ValueError(f"无效的DNA序列: {seq}")
+        raise ValueError(f"Invalid DNA sequence: {seq}")
     
     counts = Counter(seq)
     return {
@@ -137,32 +137,32 @@ def count_nucleotides(seq: str) -> Dict[str, int]:
 
 def hamming_distance(seq1: str, seq2: str) -> int:
     """
-    计算两个等长序列的汉明距离
+    Calculate Hamming distance between two equal-length sequences
     
     Args:
-        seq1: 第一个序列
-        seq2: 第二个序列
+        seq1: First sequence
+        seq2: Second sequence
         
     Returns:
-        int: 汉明距离
+        int: Hamming distance
     """
     if len(seq1) != len(seq2):
-        raise ValueError("序列长度必须相等")
+        raise ValueError("Sequences must have equal length")
     
     return sum(c1 != c2 for c1, c2 in zip(seq1.upper(), seq2.upper()))
 
 
 def format_sequence(seq: str, line_length: int = 80, add_numbers: bool = False) -> str:
     """
-    格式化序列输出
+    Format sequence output
     
     Args:
-        seq: DNA序列
-        line_length: 每行长度
-        add_numbers: 是否添加行号
+        seq: DNA sequence
+        line_length: Length per line
+        add_numbers: Whether to add line numbers
         
     Returns:
-        str: 格式化的序列
+        str: Formatted sequence
     """
     if not seq:
         return ""
@@ -180,16 +180,16 @@ def format_sequence(seq: str, line_length: int = 80, add_numbers: bool = False) 
     return '\n'.join(lines)
 
 
-# 保留简单的FASTA处理功能，因为可能需要处理输入文件
+# Keep simple FASTA processing functionality as it may be needed for input file processing
 def parse_fasta_string(fasta_string: str) -> List[Tuple[str, str]]:
     """
-    解析FASTA格式字符串
+    Parse FASTA format string
     
     Args:
-        fasta_string: FASTA格式的字符串
+        fasta_string: FASTA format string
         
     Returns:
-        List[Tuple[str, str]]: (序列名, 序列)的列表
+        List[Tuple[str, str]]: List of (sequence name, sequence) tuples
     """
     sequences = []
     lines = fasta_string.strip().split('\n')
@@ -200,17 +200,17 @@ def parse_fasta_string(fasta_string: str) -> List[Tuple[str, str]]:
     for line in lines:
         line = line.strip()
         if line.startswith('>'):
-            # 保存前一个序列
+            # Save previous sequence
             if current_name is not None:
                 sequences.append((current_name, ''.join(current_seq)))
             
-            # 开始新序列
-            current_name = line[1:]  # 移除'>'
+            # Start new sequence
+            current_name = line[1:]  # Remove '>'
             current_seq = []
         elif line and current_name is not None:
             current_seq.append(line)
     
-    # 保存最后一个序列
+    # Save last sequence
     if current_name is not None:
         sequences.append((current_name, ''.join(current_seq)))
     
@@ -219,21 +219,21 @@ def parse_fasta_string(fasta_string: str) -> List[Tuple[str, str]]:
 
 def to_fasta_string(sequences: List[Tuple[str, str]], line_length: int = 80) -> str:
     """
-    将序列列表转换为FASTA格式字符串
+    Convert sequence list to FASTA format string
     
     Args:
-        sequences: (序列名, 序列)的列表
-        line_length: 每行序列长度
+        sequences: List of (sequence name, sequence) tuples
+        line_length: Sequence length per line
         
     Returns:
-        str: FASTA格式字符串
+        str: FASTA format string
     """
     fasta_lines = []
     
     for name, seq in sequences:
         fasta_lines.append(f">{name}")
         
-        # 分行输出序列
+        # Output sequence in lines
         for i in range(0, len(seq), line_length):
             fasta_lines.append(seq[i:i+line_length])
     

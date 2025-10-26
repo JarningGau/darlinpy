@@ -1,5 +1,5 @@
 """
-实用工具模块 - 提供CARLIN分析所需的基础序列处理功能
+Utility module - Provides basic sequence processing functions required for CARLIN analysis
 """
 
 from .sequence_utils import (
