@@ -202,9 +202,28 @@ class MutationIdentifier:
             # Perfect match, no mutation
             return None
 
-        # Prioritize gap-based classification: ref has gap and seq has no gap => insertion; seq has gap and ref has no gap => deletion
-        # This preserves insertion/deletion information and prevents misclassification as substitution after gap removal
-        if ('-' in ref) and ('-' not in seq):
+        # Check for complex mutation: large length change with mismatches
+        seq_clean = seq.replace('-', '')
+        ref_clean = ref.replace('-', '')
+        length_change = len(seq_clean) - len(ref_clean)
+        is_large_length_change = abs(length_change) > 3
+        
+        # Check for mismatches by comparing aligned positions
+        has_mismatch = False
+        min_len = min(len(seq), len(ref))
+        for i in range(min_len):
+            if seq[i] != ref[i] and seq[i] != '-' and ref[i] != '-':
+                has_mismatch = True
+                break
+        
+        # Complex mutation: large length change with mismatches
+        if is_large_length_change and has_mismatch:
+            mutation_type = MutationType.COMPLEX
+            loc_start = start_pos
+            loc_end = start_pos + len(ref_clean) - 1
+            ref_nogap = ref_clean
+            seq_nogap = seq_clean
+        elif ('-' in ref) and ('-' not in seq):
             # Insertion: at positions where reference has gaps, query sequence provides inserted bases
             mutation_type = MutationType.INSERTION
             # Find exact inserted fragment and insertion position (between reference bases before and after gap)
@@ -244,10 +263,28 @@ class MutationIdentifier:
             seq_nogap = ''
         else:
             # Other cases fall back to length/content comparison classification
-            mutation_type, seq_old, seq_new = self._classify_mutation(seq, ref)
-            # Use _classify_mutation results to override no-gap sequences
-            ref_nogap = seq_old if isinstance(seq_old, str) else ref_nogap
-            seq_nogap = seq_new if isinstance(seq_new, str) else seq_nogap
+            # But first check if this should be complex mutation based on both length change and content change
+            seq_clean = seq.replace('-', '')
+            ref_clean = ref.replace('-', '')
+            length_change = len(seq_clean) - len(ref_clean)
+            
+            # Check if there's both length change > 3 AND content change (not pure insertion/deletion)
+            has_content_change = seq_clean != ref_clean
+            is_large_length_change = abs(length_change) > 3
+            
+            if is_large_length_change and has_content_change:
+                # Complex mutation: large length change with content change
+                mutation_type = MutationType.COMPLEX
+                loc_start = start_pos
+                loc_end = start_pos + len(ref_clean) - 1
+                ref_nogap = ref_clean
+                seq_nogap = seq_clean
+            else:
+                # Use standard classification
+                mutation_type, seq_old, seq_new = self._classify_mutation(seq, ref)
+                # Use _classify_mutation results to override no-gap sequences
+                ref_nogap = seq_old if isinstance(seq_old, str) else ref_clean
+                seq_nogap = seq_new if isinstance(seq_new, str) else seq_clean
         
         # Calculate precise position range
         if 'loc_start' not in locals():

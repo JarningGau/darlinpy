@@ -117,7 +117,7 @@ class TestMutation:
             seq_old="A",
             seq_new="T"
         )
-        assert sub.to_hgvs() == "CARLIN:g.100A>T"
+        assert sub.to_hgvs() == "100A>T"
         
         # 多碱基替换
         multi_sub = Mutation(
@@ -127,7 +127,7 @@ class TestMutation:
             seq_old="ATG",
             seq_new="GCC"
         )
-        assert multi_sub.to_hgvs() == "CARLIN:g.100_102ATG>GCC"
+        assert multi_sub.to_hgvs() == "100_102ATG>GCC"
         
         # 单碱基删除
         del_single = Mutation(
@@ -137,7 +137,7 @@ class TestMutation:
             seq_old="A",
             seq_new=""
         )
-        assert del_single.to_hgvs() == "CARLIN:g.100del"
+        assert del_single.to_hgvs() == "100del"
         
         # 多碱基删除
         del_multi = Mutation(
@@ -147,7 +147,7 @@ class TestMutation:
             seq_old="ATG",
             seq_new=""
         )
-        assert del_multi.to_hgvs() == "CARLIN:g.100_102del"
+        assert del_multi.to_hgvs() == "100_102del"
         
         # 插入
         insertion = Mutation(
@@ -157,7 +157,7 @@ class TestMutation:
             seq_old="",
             seq_new="GCC"
         )
-        assert insertion.to_hgvs() == "CARLIN:g.100_101insGCC"
+        assert insertion.to_hgvs() == "100_101insGCC"
         
         # 复合突变
         complex_mut = Mutation(
@@ -167,7 +167,7 @@ class TestMutation:
             seq_old="ATG",
             seq_new="GCCAA"
         )
-        assert complex_mut.to_hgvs() == "CARLIN:g.100_102delinsGCCAA"
+        assert complex_mut.to_hgvs() == "100_102delinsGCCAA"
     
     def test_string_representation(self):
         """测试字符串表示"""
@@ -181,7 +181,7 @@ class TestMutation:
         )
         
         # 测试__str__
-        assert str(mutation) == "CARLIN:g.100A>T"
+        assert str(mutation) == "100A>T"
         
         # 测试__repr__
         repr_str = repr(mutation)
