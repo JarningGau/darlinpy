@@ -68,27 +68,3 @@ def build_carlin_config(sequence, output_path="carlin_config.json"):
         json.dump(config, f, indent=4)
 
     return output_path
-
-# Build a file using the user's earlier sequence as an example
-# sequence = {
-#     "segments": [
-#         "GACTGCACGACAGTCGACGA",
-#         "GACACGACTCGCGCATACGA",
-#         "GACTACAGTCGCTACGACGA",
-#         "GCGAGCGCTATGAGCGACTA",
-#         "GATACGATACGCGCACGCTA",
-#         "GAGAGCGCGCTCGTCGACTA",
-#         "GCGACTGTACGCACACGCGA",
-#         "GATAGTATGCGTACACGCGA",
-#         "GAGTCGAGACGCTGACGATA",
-#         "GATACGTAGCACGCAGACGA",
-#     ],
-#     "pam": "TGGAGTC",
-#     "prefix": "CGCCG",
-#     "postfix": "TGGGAGCT",
-#     "Primer5": "GAGCTGTACAAGTAAGCGGC",
-#     "Primer3": "CGACTGTGCCTTCTAGTTGC",
-#     "SecondarySequence": "AGAATTCTAACTAGAGCTCGCTGATCAGCCT",
-# }
-
-# out_path = build_carlin_config(sequence, output_path="/mnt/data/carlin_config_v2.json")
