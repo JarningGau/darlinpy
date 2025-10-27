@@ -381,7 +381,7 @@ def _generate_summary_stats(
 
 
 # Convenience functions
-def quick_analyze(sequences: List[str], config: str = 'OriginalCARLIN') -> AnalysisResult:
+def quick_analyze(sequences: List[str], config: str = 'Col1a1') -> AnalysisResult:
     """
     Quick analysis function using default parameters
     

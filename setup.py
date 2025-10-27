@@ -47,6 +47,7 @@ setup(
         "numpy>=1.20.0",
         "scipy>=1.7.0", 
         "biopython>=1.79",
+        "pandas>=1.3.0",
     ],
     extras_require={
         "dev": [
