@@ -304,23 +304,6 @@ def analyze_sequences(
         raise RuntimeError(f"Error occurred during analysis: {str(e)}") from e
 
 
-def _load_config(config: Union[str, AmpliconConfig]) -> AmpliconConfig:
-    """Load amplicon configuration"""
-    if isinstance(config, AmpliconConfig):
-        return config
-    
-    config_map = {
-        'OriginalCARLIN': ORIGINAL_CARLIN,
-        'original': ORIGINAL_CARLIN
-    }
-    
-    if config not in config_map:
-        available = ', '.join(config_map.keys())
-        raise ValueError(f"Unsupported configuration name: {config}. Available configurations: {available}")
-    
-    return config_map[config]
-
-
 def _get_cut_sites(amplicon_config: AmpliconConfig) -> List[int]:
     """Get CARLIN Cas9 cut sites
     
@@ -378,39 +361,3 @@ def _generate_summary_stats(
     })
     
     return stats
-
-
-# Convenience functions
-def quick_analyze(sequences: List[str], config: str = 'Col1a1') -> AnalysisResult:
-    """
-    Quick analysis function using default parameters
-    
-    Args:
-        sequences: List of sequences
-        config: Configuration name
-        
-    Returns:
-        AnalysisResult: Analysis results
-    """
-    return analyze_sequences(sequences, config=config, verbose=True)
-
-
-def batch_analyze_files(file_paths: List[Union[str, Path]], **kwargs) -> List[AnalysisResult]:
-    """
-    Batch analyze multiple files
-    
-    Args:
-        file_paths: List of file paths
-        **kwargs: Other parameters passed to analyze_sequences
-        
-    Returns:
-        List[AnalysisResult]: List of analysis results for each file
-    """
-    results = []
-    
-    for file_path in file_paths:
-        # File reading logic needs to be implemented here
-        # Placeholder for now, can be extended to support FASTA/FASTQ formats later
-        pass
-    
-    return results 

@@ -5,7 +5,7 @@ DARLIN主API模块测试
 
 import pytest
 import time
-from darlin.api import analyze_sequences, quick_analyze, AnalysisResult
+from darlin.api import analyze_sequences, AnalysisResult
 
 
 class TestAnalysisResult:
@@ -296,26 +296,6 @@ class TestAnalyzeSequences:
         )
         
         assert isinstance(result, AnalysisResult)
-
-
-class TestQuickAnalyze:
-    """测试quick_analyze便利函数"""
-    
-    def test_quick_analyze(self, capsys):
-        """测试快速分析函数"""
-        from darlin.config.amplicon_configs import load_carlin_config_by_locus
-        carlin_config = load_carlin_config_by_locus('Col1a1')
-        carlin_ref = carlin_config.get_full_reference_sequence()
-        sequences = [carlin_ref[:200]]
-        
-        result = quick_analyze(sequences)
-        
-        # 验证结果
-        assert isinstance(result, AnalysisResult)
-        
-        # 验证verbose=True生效
-        captured = capsys.readouterr()
-        assert "Starting analysis" in captured.out
 
 
 class TestConfigLoading:
