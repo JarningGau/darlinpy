@@ -40,10 +40,7 @@ sequences = [
 
 # One-line analysis with default Col1a1 configuration
 results = analyze_sequences(sequences, config='Col1a1', verbose=True)
-
-print(f"Analysis completed: {len(results.valid_sequences)} sequences processed")
-print(f"Average alignment score: {results.alignment_scores.mean():.2f}")
-print(f"Total mutations detected: {len(results.mutations)}")
+results.to_df()
 ```
 
 ### Advanced Usage
@@ -58,7 +55,7 @@ from darlin import analyze_sequences, AmpliconConfig, build_carlin_config
 ## the reference is prefix + (segments+pam)x10 + postfix
 ## the sequencing library contains:
 ## primer5 + prefix + (segments+pam)x10 + postfix + secondary sequence + primer3
-sequence = {
+template = {
     "segments" : [
         "GACTGCACGACAGTCGACGA",
         "GACACGACTCGCGCATACGA",
@@ -78,14 +75,18 @@ sequence = {
     "Primer3" : "CGACTGTGCCTTCTAGTTGC",
     "SecondarySequence" : "AGAATTCTAACTAGAGCTCGCTGATCAGCCT"
 }
-build_carlin_config(sequence, output_path="configs/array_Col1a1.json")
+build_carlin_config(template, output_path="custom_array.json")
 
 # Build and use custom configuration
-build_carlin_config(sequence_config, output_path="custom_array.json")
 config = AmpliconConfig(config_file="custom_array.json")
 
 # Analyze with custom configuration
+sequences = [
+    "CGCCGGACTGCACGACAGTCGACCGATGGAGTCGACACGACTCGCGCATATTCGATGGAGTCGACTACAGTCGCTACGAGTATGGAGTCGATACGTAGCACGCAGAACGATGGGAGCT",
+    "CGCCGGACTGCACGACAGTCGACGATGGAGTCGACACGACTCGCGCATACGATGGAGTCGACTACAGTCGCTACGACGATGGAGTCGCGAGCGCTATGAGCGACTATGGAGTCGATACGATACGCGCACGCTATGGAGTCGAGAGCGCGCTCGTCGACTATGGAGTCGCGACTGTACGCACACGCGATGGAGTCGATAGTATGCGTACACGCGATGGAGTCGAGTCGAGACGCTGACGATATGGAGTCGATACGTAGCACGCAGACGATGGGAGCT"
+]
 results = analyze_sequences(sequences, config=config, method='exact')
+results.to_df()
 ```
 
 ## Supported Lineage Arrays
