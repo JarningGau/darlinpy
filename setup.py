@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """
-DARLIN Python - CARLIN序列分析工具包
+DARLIN Python - CARLIN sequence analysis toolkit
 """
 
 from setuptools import setup, find_packages
 
-# 读取版本号
 def get_version():
     with open("darlin/__init__.py", "r") as f:
         for line in f:
@@ -13,23 +12,22 @@ def get_version():
                 return line.split("=")[1].strip().strip('"').strip("'")
     return "0.1.0"
 
-# 读取长描述
 def get_long_description():
     try:
         with open("README.md", "r", encoding="utf-8") as f:
             return f.read()
     except FileNotFoundError:
-        return "DARLIN Python - CARLIN序列分析工具的Python实现"
+        return "DARLIN Python - Python implementation of CARLIN sequence analysis tools"
 
 setup(
     name="darlinpy", 
     version=get_version(),
     author="DARLIN-toolkits Team",
     author_email="",
-    description="CARLIN序列分析工具的Python实现",
+    description="Python implementation of CARLIN sequence analysis tools",
     long_description=get_long_description(),
     long_description_content_type="text/markdown",
-    url="https://github.com/your-org/darlinpy",
+    url="https://github.com/jarninggau/darlinpy",
     packages=find_packages(),
     classifiers=[
         "Development Status :: 3 - Alpha",
@@ -48,6 +46,8 @@ setup(
         "scipy>=1.7.0", 
         "biopython>=1.79",
         "pandas>=1.3.0",
+        "fuzzysearch>=0.7.0",
+        "tqdm>=4.60.0",
     ],
     extras_require={
         "dev": [
@@ -63,11 +63,6 @@ setup(
         ],
         "fast": [
             "numba>=0.56.0",
-        ],
-    },
-    entry_points={
-        "console_scripts": [
-            "darlin=darlin.cli:main",
         ],
     },
     include_package_data=True,

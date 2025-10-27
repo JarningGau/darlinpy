@@ -8,7 +8,7 @@ Main features:
 - Mutation annotation
 - Advanced sequence analysis API
 
-Author: DARLIN-toolkits Team
+Author: Jarning Gau
 """
 
 __version__ = "0.1.0"
