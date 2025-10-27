@@ -11,7 +11,7 @@ from scipy import stats
 
 from ..alignment.aligned_seq import AlignedSEQ, desemble_sequence
 from ..config.amplicon_configs import AmpliconConfig
-from .allele_data import AlleleCallResult, BulkAlleleCallResult
+from .allele_data import AlleleCallResult
 
 
 class AlleleCaller:
@@ -364,88 +364,3 @@ class AlleleCaller:
             
         return ''.join(consensus)
         
-    def call_bulk_alleles(self, 
-                         sequence_groups: List[List[AlignedSEQ]],
-                         group_weights: Optional[List[List[float]]] = None,
-                         method: str = 'coarse_grain',
-                         dominant_only: bool = True) -> BulkAlleleCallResult:
-        """
-        Bulk allele calling
-        
-        Args:
-            sequence_groups: List of sequence groups, each group represents a UMI or cell
-            group_weights: Weights for sequences in each group
-            method: Calling method ('exact' or 'coarse_grain')
-            dominant_only: Whether to return only dominant allele
-            
-        Returns:
-            Bulk allele calling result
-        """
-        if group_weights is None:
-            group_weights = [[1.0] * len(group) for group in sequence_groups]
-            
-        if len(sequence_groups) != len(group_weights):
-            raise ValueError("sequence_groups and group_weights must have the same length")
-            
-        # Call alleles for each group
-        individual_results = []
-        calling_method = getattr(self, f'call_alleles_{method}')
-        
-        for group_seqs, group_w in zip(sequence_groups, group_weights):
-            result = calling_method(group_seqs, group_w, dominant_only)
-            individual_results.append(result)
-            
-        # Aggregate all successfully called alleles
-        successful_alleles = [r.allele for r in individual_results if r.is_callable()]
-        successful_weights = [r.total_weight for r in individual_results if r.is_callable()]
-        
-        if not successful_alleles:
-            return BulkAlleleCallResult(
-                individual_results=individual_results,
-                summary_alleles=[],
-                allele_frequencies=[],
-                total_callable_sequences=0,
-                calling_parameters={
-                    'method': method,
-                    'dominant_only': dominant_only,
-                    'dominant_threshold': self.dominant_threshold
-                }
-            )
-            
-        # Aggregate alleles by frequency
-        allele_seqs = [allele.get_seq() for allele in successful_alleles]
-        unique_alleles, _, _ = self.unique_by_frequency(allele_seqs, successful_weights)
-        
-        # Calculate frequencies
-        allele_counts = Counter()
-        total_weight = sum(successful_weights)
-        
-        for allele_seq, weight in zip(allele_seqs, successful_weights):
-            allele_counts[allele_seq] += weight
-            
-        # Sort and calculate frequencies
-        sorted_alleles = sorted(allele_counts.items(), key=lambda x: x[1], reverse=True)
-        summary_alleles = []
-        allele_frequencies = []
-        
-        for allele_seq, count in sorted_alleles:
-            # Find corresponding AlignedSEQ object
-            for allele in successful_alleles:
-                if allele.get_seq() == allele_seq:
-                    summary_alleles.append(allele)
-                    break
-            allele_frequencies.append(count / total_weight)
-            
-        return BulkAlleleCallResult(
-            individual_results=individual_results,
-            summary_alleles=summary_alleles,
-            allele_frequencies=allele_frequencies,
-            total_callable_sequences=len(successful_alleles),
-            calling_parameters={
-                'method': method,
-                'dominant_only': dominant_only,
-                'dominant_threshold': self.dominant_threshold,
-                'total_groups': len(sequence_groups),
-                'successful_groups': len(successful_alleles)
-            }
-        ) 
