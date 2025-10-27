@@ -9,6 +9,7 @@ from typing import List, Optional, Dict, Any, Union, Tuple
 from dataclasses import dataclass, field
 import time
 from pathlib import Path
+import pandas as pd
 
 from .config.amplicon_configs import ORIGINAL_CARLIN, AmpliconConfig
 from .alignment.carlin_aligner import CARLINAligner
@@ -88,6 +89,38 @@ class AnalysisResult:
                 mut_type = mut.type.value
                 mutation_counts[mut_type] = mutation_counts.get(mut_type, 0) + 1
         return mutation_counts
+
+    def to_df(self) -> pd.DataFrame:
+        """Convert analysis results to pandas DataFrame
+        
+        Returns:
+            pd.DataFrame: DataFrame containing analysis results with columns:
+                - query: Original input sequences
+                - query_len: Length of each sequence
+                - aligned_query: Aligned query sequences
+                - aligned_ref: Aligned reference sequences
+                - scores: Alignment scores
+                - mutations: Comma-separated list of mutations in HGVS format
+                - confidence: Comma-separated list of mutation confidence labels
+        """
+        mutations = []
+        confidence = []
+        for mut in self.mutations:
+            _mut = ','.join([m.to_hgvs() for m in mut]) if len(mut) > 0 else []
+            _conf = ','.join([m.confidence_label for m in mut]) if len(mut) > 0 else []
+            mutations.append(_mut)
+            confidence.append(_conf)
+        
+        results_df = pd.DataFrame({
+            'query': self.valid_sequences,
+            'query_len': [len(s) for s in self.valid_sequences], 
+            'aligned_query': self.aligned_query, 
+            'aligned_ref': self.aligned_reference,
+            'scores': self.alignment_scores, 
+            'mutations': mutations, 
+            'confidence': confidence
+        })
+        return results_df
     
     def print_summary(self):
         """Print analysis results summary"""
