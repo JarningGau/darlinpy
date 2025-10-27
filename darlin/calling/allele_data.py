@@ -76,6 +76,9 @@ class BulkAlleleCallResult:
         allele_frequencies: Frequency of each allele
         total_callable_sequences: Total number of callable sequences
         calling_parameters: Calling parameters
+        
+    @deprecated This class is not used in the main API (analyze_sequences, AmpliconConfig, build_carlin_config).
+    It may be removed in future versions.
     """
     individual_results: List[AlleleCallResult]
     summary_alleles: List[AlignedSEQ]
@@ -130,6 +133,9 @@ class BulkAlleleCallResult:
 class AlleleCallStatistics:
     """
     Allele calling statistics
+    
+    @deprecated This class is not used in the main API (analyze_sequences, AmpliconConfig, build_carlin_config).
+    It may be removed in future versions.
     """
     
     def __init__(self, results: Union[AlleleCallResult, BulkAlleleCallResult, List[AlleleCallResult]]):

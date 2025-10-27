@@ -3,10 +3,29 @@
 Sequence processing utility functions
 
 Provides basic DNA sequence processing functionality required for CARLIN analysis
+
+@deprecated This module is not used in the main API (analyze_sequences, AmpliconConfig, build_carlin_config).
+It may be removed in future versions.
 """
 
+import warnings
 from typing import List, Tuple, Dict
 from collections import Counter
+from functools import wraps
+
+
+def deprecated(func):
+    """Decorator to mark functions as deprecated"""
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        warnings.warn(
+            f"{func.__name__} is deprecated and not used in the main API. "
+            "It may be removed in future versions.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        return func(*args, **kwargs)
+    return wrapper
 
 
 # DNA sequence related constants
@@ -19,7 +38,7 @@ COMPLEMENT_MAP = {
     'H': 'D', 'V': 'B', 'N': 'N'
 }
 
-
+@deprecated
 def reverse_complement(seq: str) -> str:
     """
     Calculate reverse complement of DNA sequence
@@ -47,6 +66,7 @@ def reverse_complement(seq: str) -> str:
     return complement[::-1]
 
 
+@deprecated
 def is_valid_dna(seq: str, allow_ambiguous: bool = False) -> bool:
     """
     Validate if sequence is valid DNA
@@ -67,6 +87,7 @@ def is_valid_dna(seq: str, allow_ambiguous: bool = False) -> bool:
     return all(base in allowed_bases for base in seq)
 
 
+@deprecated
 def clean_sequence(seq: str, remove_chars: str = "- \n\t") -> str:
     """
     Clean sequence by removing specified characters
@@ -88,6 +109,7 @@ def clean_sequence(seq: str, remove_chars: str = "- \n\t") -> str:
     return cleaned
 
 
+@deprecated
 def calculate_gc_content(seq: str) -> float:
     """
     Calculate GC content
@@ -109,6 +131,7 @@ def calculate_gc_content(seq: str) -> float:
     return (gc_count / len(seq)) * 100 if len(seq) > 0 else 0.0
 
 
+@deprecated
 def count_nucleotides(seq: str) -> Dict[str, int]:
     """
     Count nucleotide frequencies
@@ -135,6 +158,7 @@ def count_nucleotides(seq: str) -> Dict[str, int]:
     }
 
 
+@deprecated
 def hamming_distance(seq1: str, seq2: str) -> int:
     """
     Calculate Hamming distance between two equal-length sequences
@@ -152,6 +176,7 @@ def hamming_distance(seq1: str, seq2: str) -> int:
     return sum(c1 != c2 for c1, c2 in zip(seq1.upper(), seq2.upper()))
 
 
+@deprecated
 def format_sequence(seq: str, line_length: int = 80, add_numbers: bool = False) -> str:
     """
     Format sequence output
@@ -181,6 +206,7 @@ def format_sequence(seq: str, line_length: int = 80, add_numbers: bool = False) 
 
 
 # Keep simple FASTA processing functionality as it may be needed for input file processing
+@deprecated
 def parse_fasta_string(fasta_string: str) -> List[Tuple[str, str]]:
     """
     Parse FASTA format string
@@ -217,6 +243,7 @@ def parse_fasta_string(fasta_string: str) -> List[Tuple[str, str]]:
     return sequences
 
 
+@deprecated
 def to_fasta_string(sequences: List[Tuple[str, str]], line_length: int = 80) -> str:
     """
     Convert sequence list to FASTA format string

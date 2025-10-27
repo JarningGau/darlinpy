@@ -8,12 +8,11 @@ Provides simplified high-level interface for CARLIN sequence analysis
 from typing import List, Optional, Dict, Any, Union, Tuple
 from dataclasses import dataclass, field
 import time
-from pathlib import Path
 import pandas as pd
 
-from .config.amplicon_configs import ORIGINAL_CARLIN, AmpliconConfig
+from .config.amplicon_configs import AmpliconConfig
 from .alignment.carlin_aligner import CARLINAligner
-from .calling.allele_caller import AlleleCaller, AlleleCallResult, BulkAlleleCallResult
+from .calling.allele_caller import AlleleCaller, AlleleCallResult
 from .mutations.mutation import Mutation, annotate_mutations
 
 
