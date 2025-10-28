@@ -3,7 +3,29 @@
 DARLIN Python - CARLIN sequence analysis toolkit
 """
 
+import sys
+
 from setuptools import setup, find_packages
+
+ext_modules = []
+cmdclass = {}
+
+try:
+    from pybind11.setup_helpers import Pybind11Extension, build_ext
+
+    ext_modules.append(
+        Pybind11Extension(
+            "darlin.alignment._cas9_align",
+            ["darlin/alignment/_cas9_align.cpp"],
+            cxx_std=17,
+        )
+    )
+    cmdclass["build_ext"] = build_ext
+except ImportError:
+    print(
+        "pybind11 is not installed; building without C++ cas9_align extension.",
+        file=sys.stderr,
+    )
 
 def get_version():
     with open("darlin/__init__.py", "r") as f:
@@ -63,9 +85,12 @@ setup(
         ],
         "fast": [
             "numba>=0.56.0",
+            "pybind11>=2.10",
         ],
     },
     include_package_data=True,
     zip_safe=False,
     package_data={"darlin.config.data": ["*.json"]},
-) 
+    ext_modules=ext_modules,
+    cmdclass=cmdclass,
+)

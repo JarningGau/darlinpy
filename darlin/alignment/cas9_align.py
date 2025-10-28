@@ -2,6 +2,14 @@ import numpy as np
 from typing import Tuple, List
 from enum import IntEnum
 
+try:
+    from . import _cas9_align as _cas9_align_module
+except ImportError:  # pragma: no cover - optional acceleration
+    _cas9_align_module = None
+
+HAS_CPP_IMPL = _cas9_align_module is not None
+
+
 class Mutation(IntEnum):
     S = 0  # Substitution
     D = 1  # Deletion
@@ -23,9 +31,9 @@ def max3(vals: np.ndarray) -> Tuple[float, np.ndarray]:
     argmax3 = (vals == maxval)
     return maxval, argmax3
 
-def cas9_align(seq: np.ndarray, ref: np.ndarray, 
-               open_penalty: np.ndarray, close_penalty: np.ndarray,
-               sub_score: np.ndarray) -> Tuple[float, List[int], List[int]]:
+def cas9_align_py(seq: np.ndarray, ref: np.ndarray,
+                  open_penalty: np.ndarray, close_penalty: np.ndarray,
+                  sub_score: np.ndarray) -> Tuple[float, List[int], List[int]]:
     """
     CRISPR-Cas9 specific sequence alignment algorithm
     
@@ -184,6 +192,16 @@ def cas9_align(seq: np.ndarray, ref: np.ndarray,
     al_ref.reverse()
     
     return best_score, al_seq, al_ref
+
+
+def cas9_align(seq: np.ndarray, ref: np.ndarray,
+               open_penalty: np.ndarray, close_penalty: np.ndarray,
+               sub_score: np.ndarray) -> Tuple[float, List[int], List[int]]:
+    """Dispatch to the fastest available cas9 alignment implementation."""
+
+    if HAS_CPP_IMPL:
+        return _cas9_align_module.cas9_align(seq, ref, open_penalty, close_penalty, sub_score)
+    return cas9_align_py(seq, ref, open_penalty, close_penalty, sub_score)
 
 def nt2int(sequence: str) -> np.ndarray:
     """Convert DNA sequence to integer encoding"""

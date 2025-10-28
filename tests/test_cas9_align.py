@@ -4,13 +4,21 @@
 """
 
 import numpy as np
+import pytest
 import sys
 import os
 
 # 添加路径以便导入模块
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from darlin.alignment.cas9_align import cas9_align, nt2int, int2nt, print_cas9_alignment
+from darlin.alignment.cas9_align import (
+    cas9_align,
+    cas9_align_py,
+    nt2int,
+    int2nt,
+    print_cas9_alignment,
+    HAS_CPP_IMPL,
+)
 
 
 class TestCAS9Align:
@@ -158,6 +166,31 @@ class TestCAS9Align:
         
         # 由于在低惩罚区域，gap应该更容易出现在那里
         assert '-' in al_ref_str or '-' in al_seq_str
+
+    def test_cpp_matches_python(self):
+        """验证C++实现与Python实现结果一致"""
+        if not HAS_CPP_IMPL:
+            pytest.skip("C++ cas9_align extension is not available")
+
+        seq_str = "ACGTACGTACGT"
+        ref_str = "ACGTTTGTACGT"
+
+        seq = nt2int(seq_str)
+        ref = nt2int(ref_str)
+
+        open_penalty = np.linspace(2.0, 4.0, len(ref) + 1, dtype=np.float64)
+        close_penalty = np.linspace(1.5, 3.0, len(ref) + 1, dtype=np.float64)
+
+        score_py, al_seq_py, al_ref_py = cas9_align_py(
+            seq, ref, open_penalty, close_penalty, self.sub_score
+        )
+        score_cpp, al_seq_cpp, al_ref_cpp = cas9_align(
+            seq, ref, open_penalty, close_penalty, self.sub_score
+        )
+
+        assert score_cpp == pytest.approx(score_py)
+        assert al_seq_cpp == al_seq_py
+        assert al_ref_cpp == al_ref_py
 
 
 def test_print_function():
