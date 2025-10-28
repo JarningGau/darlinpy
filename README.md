@@ -43,6 +43,12 @@ results = analyze_sequences(sequences, config='Col1a1', verbose=True)
 results.to_df()
 ```
 
+|       | query                                             | query_len | aligned_query                                     | aligned_ref                                       | scores | mutations                                            | confidence             |
+| ----- | ------------------------------------------------- | --------- | ------------------------------------------------- | ------------------------------------------------- | ------ | ---------------------------------------------------- | ---------------------- |
+| **0** | CGCCGGACTGCACGACAGTCGACCGATGGAGTCGACACGACTCGCG... | 118       | CGCCGGACTGCACGACAGTCGACCGATGGAGTCGACACGACTCGCG... | CGCCGGACTGCACGACAGTCGA-CGATGGAGTCGACACGACTCGCG... | 515.0  | 22_23insC, 49_50insTT, 73_239delinsACGAG, 265_266... | High, High, High, High |
+| **1** | CGCCGGACTGCACGACAGTCGACGATGGAGTCGACACGACTCGCGC... | 276       | CGCCGGACTGCACGACAGTCGACGATGGAGTCGACACGACTCGCGC... | CGCCGGACTGCACGACAGTCGACGATGGAGTCGACACGACTCGCGC... | 1380.0 | []                                                   | []                     |
+
+
 ### Advanced Usage
 
 ```python
@@ -88,6 +94,12 @@ sequences = [
 results = analyze_sequences(sequences, config=config, method='exact')
 results.to_df()
 ```
+
+|       | query                                             | query_len | aligned_query                                     | aligned_ref                                       | scores | mutations                                            | confidence             |
+| ----- | ------------------------------------------------- | --------- | ------------------------------------------------- | ------------------------------------------------- | ------ | ---------------------------------------------------- | ---------------------- |
+| **0** | CGCCGGACTGCACGACAGTCGACCGATGGAGTCGACACGACTCGCG... | 118       | CGCCGGACTGCACGACAGTCGACCGATGGAGTCGACACGACTCGCG... | CGCCGGACTGCACGACAGTCGA-CGATGGAGTCGACACGACTCGCG... | 515.0  | 22_23insC, 49_50insTT, 73_239delinsACGAG, 265_266... | High, High, High, High |
+| **1** | CGCCGGACTGCACGACAGTCGACGATGGAGTCGACACGACTCGCGC... | 276       | CGCCGGACTGCACGACAGTCGACGATGGAGTCGACACGACTCGCGC... | CGCCGGACTGCACGACAGTCGACGATGGAGTCGACACGACTCGCGC... | 1380.0 | []                                                   | []                     |
+
 
 ## Supported Lineage Arrays
 
