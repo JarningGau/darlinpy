@@ -38,8 +38,9 @@ def setup_logging(log_file, log_level=logging.INFO):
     # Remove existing handlers to avoid duplicates
     logger.handlers = []
     
-    # Create formatter
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    # Create formatter - simplified format with time to seconds only
+    formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s', 
+                                  datefmt='%Y-%m-%d %H:%M:%S')
     
     # File handler
     file_handler = logging.FileHandler(log_file, mode='w')
@@ -122,12 +123,6 @@ Examples:
                         help='Reads cutoff threshold')
     parser.add_argument('--denoise-iter', type=int, default=1,
                         help='Number of denoising iterations')
-    parser.add_argument('--config', type=str, default='Col1a1',
-                        help='DARLIN configuration name')
-    parser.add_argument('--method', type=str, default='exact',
-                        help='DARLIN analysis method')
-    parser.add_argument('--min-sequence-length', type=int, default=20,
-                        help='Minimum sequence length for DARLIN analysis')
     parser.add_argument('--skip-pear', action='store_true',
                         help='Skip PEAR assembly (use existing assembled file)')
     parser.add_argument('--keep-pear', action='store_true',
@@ -697,10 +692,11 @@ def main():
     # Setup logging
     log_level = getattr(logging, args.log_level.upper())
     logger = setup_logging(log_file, log_level)
-    
+    logger.info("--------------------------------")
     logger.info(f"Starting bulk DNA/RNA DARLIN Array processing for sample: {args.sample_id}")
     logger.info(f"Output directory: {sample_output_dir}")
     logger.info(f"Arguments: {vars(args)}")
+    logger.info("--------------------------------")
 
     # Library structure of bulk DNA/RNA (CA/RA/TA)
     # R1-adapter--UMI--3primer-rc--lineageBC--5primer-rc--R2-adapter
@@ -719,30 +715,32 @@ def main():
         current_p3_seq = P3_SEQ_RC
         current_p5_seq = P5_SEQ_RC
         
-        # Step 1: Assemble PE reads
+        #########################################################
+        #### Step 1: Assemble PE reads
+        #########################################################
         pear_out_prefix = os.path.join(pear_output_dir, 'pear')
         pear_log = os.path.join(pear_output_dir, 'pear.log')
         assembled_fq_file = os.path.join(pear_output_dir, 'pear.assembled.fastq')
         
         if not args.skip_pear:
-            logger.info("Step 1: Assembling paired-end reads with PEAR...")
+            logger.info("#### Step 1: Assembling paired-end reads with PEAR...")
             assemble_pe_reads(
                 args.fq1, args.fq2, pear_out_prefix, pear_log,
                 pear_path=args.pear_path, threads=args.threads, logger=logger
             )
         else:
-            logger.info("Step 1: Skipping PEAR assembly (using existing assembled file)")
+            logger.info("#### Step 1: Skipping PEAR assembly (using existing assembled file)")
             if not os.path.exists(assembled_fq_file):
                 logger.error(f"Assembled FASTQ file not found: {assembled_fq_file}")
                 sys.exit(1)
         
-        # Step 2: Extract lineage barcode and UMI
-        logger.info("Step 2: Extracting lineage barcode and UMI...")
+        #########################################################
+        #### Step 2: Extract lineage barcode and UMI
+        #########################################################
+        logger.info("#### Step 2: Extracting lineage barcode and UMI...")
         results = extract_lineage_barcode_and_umi(assembled_fq_file, current_umi_len, current_p3_seq, current_p5_seq)
         logger.info(f"Valid reads: {len(results)}")
         
-        # Step 3: Convert to DataFrame
-        logger.info("Step 3: Converting to DataFrame...")
         results_df = pd.DataFrame(results, columns=['lineage_bc', 'UMI'])
         results_df['bc_len'] = results_df['lineage_bc'].str.len()
         
@@ -773,8 +771,10 @@ def main():
         logger.info(f"Reads after filtering: {len(results_clean)}")
         logger.info(f"Proportion of valid reads: {results_clean['reads'].sum() / results_df['reads'].sum():.4f}")
         
-        # Step 4: Denoise lineage barcode and UMI
-        logger.info("Step 4: Denoising lineage barcode and UMI...")
+        #########################################################
+        #### Step 3: Denoise lineage barcode and UMI
+        #########################################################
+        logger.info("#### Step 3: Denoising lineage barcode and UMI...")
         agg, mapping, stats = correct_lineage_and_umi(
             results_clean, umi_col="UMI", bc_col="lineage_bc", n_iter=args.denoise_iter, logger=logger
         )
@@ -786,27 +786,30 @@ def main():
         # Diagnostic plot 5: Distribution of lineage barcode lengths (after denoising)
         plot_barcode_length_by_umi(agg, sample_output_dir, unedited_bc_len=UNEDITED_BC_LEN)
         
-        # Step 5: Group by lineage barcode
         agg2 = agg.groupby('lineage_bc_corr').size().reset_index(name="UMIs")
         agg2.sort_values(by='UMIs', ascending=False, inplace=True)
         agg2['bc_len'] = agg2['lineage_bc_corr'].str.len()
         logger.info(f"Unique lineage barcodes: {len(agg2)}")
         
-        # Step 6: Annotate alleles
-        logger.info("Step 6: Annotating alleles...")
+        #########################################################
+        #### Step 4: Annotate alleles
+        #########################################################
+        logger.info("#### Step 4: Annotating alleles...")
         sequences = agg2['lineage_bc_corr'].tolist()
         # For bulk DNA/RNA, we should perform reverse_complement on the sequences
         sequences = [str(Seq(s).reverse_complement()) for s in sequences]
         agg2['query'] = sequences
         
         results_allele = analyze_sequences(
-            sequences, config=args.config, method=args.method,
-            min_sequence_length=args.min_sequence_length, verbose=True
+            sequences, config=args.locus,
+            min_sequence_length=args.min_bc_len, verbose=False
         )
         results_allele = results_allele.to_df()
-        
-        # Step 7: Merge and process final results
-        logger.info("Step 7: Processing final results...")
+
+        #########################################################
+        #### Step 5: Merge and process final results
+        #########################################################
+        logger.info("#### Step 5: Processing final results...")
         final = agg2.merge(results_allele, on='query', how='left')
         final = final[['query', 'bc_len', 'UMIs', 'mutations', 'confidence', 'aligned_query', 'aligned_ref']]
         
@@ -843,7 +846,7 @@ def main():
                 shutil.rmtree(pear_output_dir)
                 logger.info(f"PEAR output directory removed: {pear_output_dir}")
         
-        logger.info("Processing completed successfully!")
+        logger.info("Processing completed successfully!\n\n")
         
     except Exception as e:
         logger.error(f"Error during processing: {str(e)}", exc_info=True)
