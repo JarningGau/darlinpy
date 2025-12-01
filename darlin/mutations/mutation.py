@@ -295,6 +295,43 @@ class MutationIdentifier:
             else:
                 # For insertion case, end position equals start position
                 loc_end = start_pos
+
+        # HGVS-style normalization: shrink shared prefix/suffix only for
+        # complex/indel (delins) events so that we always use the minimal
+        # representation, but keep pure substitutions unchanged.
+        if mutation_type in (MutationType.COMPLEX, MutationType.INDEL) and ref_nogap and seq_nogap:
+            # Trim common prefix
+            prefix_len = 0
+            max_pref = min(len(ref_nogap), len(seq_nogap))
+            while prefix_len < max_pref and ref_nogap[prefix_len] == seq_nogap[prefix_len]:
+                prefix_len += 1
+            if prefix_len > 0:
+                ref_nogap = ref_nogap[prefix_len:]
+                seq_nogap = seq_nogap[prefix_len:]
+                loc_start += prefix_len
+
+            # Trim common suffix
+            suffix_len = 0
+            max_suf = min(len(ref_nogap), len(seq_nogap))
+            while (
+                suffix_len < max_suf
+                and ref_nogap[-(suffix_len + 1)] == seq_nogap[-(suffix_len + 1)]
+            ):
+                suffix_len += 1
+            if suffix_len > 0:
+                if suffix_len < len(ref_nogap):
+                    ref_nogap = ref_nogap[:-suffix_len]
+                else:
+                    ref_nogap = ""
+                if suffix_len < len(seq_nogap):
+                    seq_nogap = seq_nogap[:-suffix_len]
+                else:
+                    seq_nogap = ""
+                loc_end -= suffix_len
+
+            # Ensure loc_end is not before loc_start (can happen if everything matched)
+            if loc_end < loc_start:
+                loc_end = loc_start
         
         return Mutation(
             type=mutation_type,

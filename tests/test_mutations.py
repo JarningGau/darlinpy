@@ -291,6 +291,42 @@ class TestMutationIdentifier:
         # 置信度应该增加(靠近切割位点)
         assert mutation.confidence > 0.8
     
+    def test_complex_delins_minimal_normalization(self):
+        """测试复合delins事件的最小HGVS规范化 (19_265delinsTCGAG -> 23_265delinsG 风格)"""
+        # 第一段为18bp的完全匹配区间，对应位置1-18
+        prefix_len = 18
+        prefix_seq = "C" * prefix_len
+        # 第二段构造一个复杂突变区间：
+        # 参考: AAA + 'C' * 244  -> 长度 247bp, 对应位置19-265
+        # 突变: AAA + 'G' + '-' * 243  (去掉gap后为 AAAG)
+        # 这样在identify_sequence_events中会被标记为COMPLEX，
+        # 然后通过我们在MutationIdentifier中加入的前缀规范化逻辑：
+        #   loc_start: 19 + 3 = 22
+        #   loc_end  : 265 (保持不变，因为末端没有公共后缀)
+        #   seq_old  : 'C' * 244
+        #   seq_new  : 'G'
+        # 最终HGVS应为: 22_265delinsG
+        ref_block = "AAA" + "C" * 244
+        seq_block = "AAA" + "G" + "-" * 243
+
+        aligned_seq = AlignedSEQ(
+            seq_segments=[prefix_seq, seq_block],
+            ref_segments=[prefix_seq, ref_block],
+        )
+
+        identifier = MutationIdentifier()
+        mutations = identifier.identify_sequence_events(aligned_seq)
+
+        # 只应有一个复合突变
+        assert len(mutations) == 1
+        m = mutations[0]
+        assert m.type == MutationType.COMPLEX
+        assert m.loc_start == 22
+        assert m.loc_end == 265
+        assert m.seq_new == "G"
+        # HGVS最小表示
+        assert m.to_hgvs() == "22_265delinsG"
+
     def test_merge_adjacent_mutations(self):
         """测试相邻突变合并"""
         # 创建两个相邻的突变

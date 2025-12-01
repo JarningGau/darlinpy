@@ -236,6 +236,25 @@ class TestAnalyzeSequences:
         )
         
         assert result.method_used == 'exact'
+
+    def test_analyze_sequences_expected_delins_allele(self):
+        """测试特定等位基因的delins注释是否为23_265delinsG"""
+        from darlin import analyze_sequences as analyze_sequences_public
+
+        sequences = [
+            "CGCCGGACTGCACGACAGTCGAGCGATGGGAGCT",
+            "CGCCGGACTGCACGACAGTCGACGATGGAGTCGACACGACTCGCGCATACGATGGAGTCGACTACAGTCGCTACGACGATGGAGTCGCGAGCGCTATGAGCGACTATGGAGTCGATACGATACGCGCACGCTATGGAGTCGAGAGCGCGCTCGTCGACTATGGAGTCGCGACTGTACGCACACGCGATGGAGTCGATAGTATGCGTACACGCGATGGAGTCGAGTCGAGACGCTGACGATATGGAGTCGATACGTAGCACGCAGACGATGGGAGCT",
+        ]
+
+        results = analyze_sequences_public(
+            sequences,
+            config="Col1a1",
+            method="exact",
+            min_sequence_length=20,
+            verbose=False,
+        )
+        df = results.to_df()
+        assert df["mutations"].tolist() == ["23_265delinsG", []]
     
     def test_analyze_sequences_no_mutations(self):
         """测试不进行突变注释"""
