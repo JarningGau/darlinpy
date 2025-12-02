@@ -6,10 +6,15 @@ CARLIN突变注释模块测试
 import pytest
 import numpy as np
 from darlin.mutations import (
-    Mutation, 
-    MutationType, 
-    MutationIdentifier, 
+    Mutation,
+    MutationType,
+    MutationIdentifier,
     annotate_mutations
+)
+from darlin.mutations.mutation import (
+    classify_gap_pattern,
+    locate_mutation_region,
+    build_mutation,
 )
 from darlin.alignment.aligned_seq import AlignedSEQ, AlignedSEQMotif
 
@@ -189,6 +194,43 @@ class TestMutation:
         assert "pos=100-100" in repr_str
         assert "'A'->'T'" in repr_str
         assert "motif=3" in repr_str
+
+
+class TestMutationHelpers:
+    """测试突变识别辅助函数"""
+
+    def test_classify_gap_pattern_variants(self):
+        """确保不同gap模式正确分类"""
+        assert classify_gap_pattern(AlignedSEQMotif("ACGT", "ACGT")) == "perfect"
+        assert classify_gap_pattern(AlignedSEQMotif("TTGG", "----")) == "ref_gap_only"
+        assert classify_gap_pattern(AlignedSEQMotif("----", "TTGG")) == "seq_gap_only"
+        assert classify_gap_pattern(AlignedSEQMotif("A-GC", "-AGC")) == "both_gaps"
+
+    def test_locate_mutation_region_deletion(self):
+        """定位删除区间应与原有行为一致"""
+        motif = AlignedSEQMotif("----", "TTGG")
+        region = locate_mutation_region(motif, start_pos=5)
+
+        assert region is not None
+        assert region.mutation_type == MutationType.DELETION
+        assert region.ref_fragment == "TTGG"
+        assert region.seq_fragment == ""
+        assert region.loc_start == 5
+        assert region.loc_end == 8
+
+    def test_build_mutation_substitution(self):
+        """利用helper构建替换突变"""
+        motif = AlignedSEQMotif("TGCA", "AGCA")
+        region = locate_mutation_region(motif, start_pos=5)
+
+        mutation = build_mutation(motif, region, start_pos=5, motif_idx=1, min_confidence=0.8)
+
+        assert mutation.type == MutationType.SUBSTITUTION
+        assert mutation.loc_start == 5
+        assert mutation.loc_end == 8
+        assert mutation.seq_old == "AGCA"
+        assert mutation.seq_new == "TGCA"
+        assert mutation.motif_index == 1
 
 
 class TestMutationIdentifier:
