@@ -521,6 +521,38 @@ class TestComplexMutationCases:
             seq_new=""
         )
         assert multi_base_del.to_hgvs() == "24_35del", f"Expected '24_35del', got '{multi_base_del.to_hgvs()}'"
+    
+    def test_case_5_large_delins_with_insertion(self):
+        """测试案例5：大片段删除插入的正确识别（14_265delinsAGT）
+        
+        这个测试验证了修复后的代码能够正确识别大片段删除后跟小片段插入的delins事件。
+        之前的问题是代码在找到2个连续匹配后停止检查，错过了后续的替换/插入。
+        修复后，代码要求至少3个连续匹配才停止，并且会检查后续位置是否有替换。
+        """
+        # Query sequence from issues.tmp line 136
+        query = "CGCCGGACTGCACAGTCGATGGGAGCT"
+        
+        results = analyze_sequences(
+            [query],
+            config='Col1a1',
+            method='exact',
+            min_sequence_length=20,
+            verbose=False,
+            merge_adjacent_mutations=True
+        )
+        
+        # Extract mutation HGVS strings
+        mutations = [m.to_hgvs() for m in results.mutations[0]]
+        expected = ["14_265delinsAGT"]
+        
+        assert mutations == expected, f"Expected {expected}, got {mutations}"
+        
+        # Verify the mutation details
+        first_mutation = results.mutations[0][0]
+        assert first_mutation.loc_start == 14
+        assert first_mutation.loc_end == 265
+        assert first_mutation.seq_new == "AGT", f"Expected inserted sequence 'AGT', got '{first_mutation.seq_new}'"
+        assert first_mutation.type.value in ["DI", "C"], f"Expected INDEL or COMPLEX type, got {first_mutation.type.value}"
 
 
 if __name__ == "__main__":

@@ -256,16 +256,26 @@ class MutationIdentifier:
             
             # Step 2: Extend the region to include adjacent substitutions
             # Check positions after the last gap for substitutions
-            # Continue until we find a continuous match region (at least 2 consecutive matches)
+            # Continue until we find a continuous match region (at least 3 consecutive matches)
+            # This ensures we don't stop too early and miss nearby substitutions
             if last_mut_index is not None:
                 consecutive_matches = 0
                 for i in range(last_mut_index + 1, len(seq)):
                     if ref[i] != '-' and seq[i] != '-':
                         if ref[i] == seq[i]:
                             consecutive_matches += 1
-                            # If we have 2 consecutive matches, stop extending
-                            if consecutive_matches >= 2:
-                                break
+                            # Require at least 3 consecutive matches before stopping
+                            # This prevents stopping too early when there are substitutions nearby
+                            if consecutive_matches >= 3:
+                                # Check a few more positions to see if there are substitutions
+                                # If we find a substitution within the next 2 positions, continue extending
+                                found_substitution_ahead = False
+                                for j in range(i + 1, min(i + 3, len(seq))):
+                                    if j < len(seq) and ref[j] != '-' and seq[j] != '-' and ref[j] != seq[j]:
+                                        found_substitution_ahead = True
+                                        break
+                                if not found_substitution_ahead:
+                                    break
                         else:
                             # Found a substitution, reset match counter and extend region
                             consecutive_matches = 0
