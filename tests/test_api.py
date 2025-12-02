@@ -404,5 +404,49 @@ class TestErrorHandling:
             analyze_sequences(sequences)
 
 
+class TestComplexMutationCases:
+    """测试复杂突变案例（来自issues.tmp）"""
+    
+    def test_case_1_delins_identification(self):
+        """测试案例1：23_76delinsGT的正确识别"""
+        # Query sequence from issues.tmp line 102 (removing dashes)
+        query = "CGCCGGACTGCACGACAGTCGAGTCGATGGAGTCGCGAGCGCTATGAGCGACGATGGAGTCGAGTCGAGACGCTGACGAAATATGGAGTCGATACGTAGCACGCAGAACGATGGGAGCT"
+        
+        results = analyze_sequences(
+            [query],
+            config='Col1a1',
+            method='exact',
+            min_sequence_length=20,
+            verbose=False,
+            merge_adjacent_mutations=True
+        )
+        
+        # Extract mutation HGVS strings
+        mutations = [m.to_hgvs() for m in results.mutations[0]]
+        expected = ["23_76delinsGT", "104_211del", "238_239insAA", "265_266insA"]
+        
+        assert mutations == expected, f"Expected {expected}, got {mutations}"
+    
+    def test_case_2_mixed_delins_identification(self):
+        """测试案例2：51_211delinsA的正确识别（混合插入和删除）"""
+        # Query sequence from issues.tmp line 110 (removing dashes)
+        query = "CGCCGGACTGCACGACAGTCGAGATGGAGTCGACACGACTCGCGCATACACGATGGAGTCGAGTCGAGACGCTGACGCATATGGAGTCGATACGTAGCACGCAGAGGCGATGGGAGCT"
+        
+        results = analyze_sequences(
+            [query],
+            config='Col1a1',
+            method='exact',
+            min_sequence_length=20,
+            verbose=False,
+            merge_adjacent_mutations=True
+        )
+        
+        # Extract mutation HGVS strings
+        mutations = [m.to_hgvs() for m in results.mutations[0]]
+        expected = ["23del", "51_211delinsA", "238_239insC", "265_266insGG"]
+        
+        assert mutations == expected, f"Expected {expected}, got {mutations}"
+
+
 if __name__ == "__main__":
     pytest.main([__file__]) 

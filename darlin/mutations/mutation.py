@@ -244,23 +244,133 @@ class MutationIdentifier:
             ref_nogap = ''
             seq_nogap = ''.join(inserted_bases)
         elif ('-' in seq) and ('-' not in ref):
-            # Deletion: query has gaps at reference base positions
-            mutation_type = MutationType.DELETION
-            # Find deleted reference base range
-            deleted_bases = []
-            first_del_ref_index = None
+            # Deletion or delins: query has gaps at reference base positions
+            # Find continuous mutation region: deletions and/or adjacent substitutions
+            ref_bases_in_region = []
+            seq_bases_in_region = []
+            first_mut_index = None
+            last_mut_index = None
+            
+            # Step 1: Find the start of mutation region (first gap)
             for i in range(len(seq)):
                 if seq[i] == '-':
-                    deleted_bases.append(ref[i])
-                    if first_del_ref_index is None:
-                        first_del_ref_index = i
-            # Calculate start and end positions of deletion in reference (based on non-gap counting)
-            # Count non-gap reference bases before deletion start
-            ref_non_gap_before = sum(1 for i in range(first_del_ref_index) if ref[i] != '-')
-            loc_start = start_pos + ref_non_gap_before
-            loc_end = loc_start + len(deleted_bases) - 1
-            ref_nogap = ''.join(deleted_bases)
-            seq_nogap = ''
+                    if first_mut_index is None:
+                        first_mut_index = i
+                    last_mut_index = i
+            
+            # Step 2: Extend the region to include adjacent substitutions
+            # Check positions after the last gap for substitutions
+            # Continue until we find a continuous match region (at least 2 consecutive matches)
+            if last_mut_index is not None:
+                consecutive_matches = 0
+                for i in range(last_mut_index + 1, len(seq)):
+                    if ref[i] != '-' and seq[i] != '-':
+                        if ref[i] == seq[i]:
+                            consecutive_matches += 1
+                            # If we have 2 consecutive matches, stop extending
+                            if consecutive_matches >= 2:
+                                break
+                        else:
+                            # Found a substitution, reset match counter and extend region
+                            consecutive_matches = 0
+                            last_mut_index = i
+                    else:
+                        # Gap or other case, reset match counter
+                        consecutive_matches = 0
+            
+            # Step 3: Also check for substitutions within the gap region
+            # (handles cases like ref='ACGA', seq='--GT' where gaps and substitutions are interleaved)
+            if first_mut_index is not None:
+                for i in range(first_mut_index, min(last_mut_index + 1 if last_mut_index is not None else len(seq), len(seq))):
+                    if ref[i] != '-' and seq[i] != '-' and ref[i] != seq[i]:
+                        # Found substitution within or adjacent to deletion region
+                        if last_mut_index is None or i > last_mut_index:
+                            last_mut_index = i
+            
+            # Step 4: Collect all reference and query bases in the mutation region
+            if first_mut_index is not None:
+                for i in range(first_mut_index, (last_mut_index + 1) if last_mut_index is not None else len(seq)):
+                    if ref[i] != '-':
+                        ref_bases_in_region.append(ref[i])
+                    if seq[i] != '-':
+                        seq_bases_in_region.append(seq[i])
+            
+            # Step 5: Determine mutation type
+            has_substitution = False
+            if first_mut_index is not None:
+                for i in range(first_mut_index, (last_mut_index + 1) if last_mut_index is not None else len(seq)):
+                    if ref[i] != '-' and seq[i] != '-' and ref[i] != seq[i]:
+                        has_substitution = True
+                        break
+            
+            # Check if ref and seq sequences differ (indicating delins)
+            ref_str = ''.join(ref_bases_in_region)
+            seq_str = ''.join(seq_bases_in_region)
+            
+            if has_substitution or (ref_str and seq_str and ref_str != seq_str):
+                # This is a delins (deletion-insertion) event
+                mutation_type = MutationType.INDEL
+                ref_nogap = ref_str
+                seq_nogap = seq_str
+            else:
+                # Pure deletion
+                mutation_type = MutationType.DELETION
+                ref_nogap = ref_str
+                seq_nogap = ''
+            
+            # Step 6: Calculate start and end positions
+            if first_mut_index is not None:
+                ref_non_gap_before = sum(1 for i in range(first_mut_index) if ref[i] != '-')
+                loc_start = start_pos + ref_non_gap_before
+                if ref_nogap:
+                    loc_end = loc_start + len(ref_nogap) - 1
+                else:
+                    loc_end = loc_start
+            else:
+                # Fallback (should not happen)
+                loc_start = start_pos
+                loc_end = start_pos
+        elif ('-' in ref) and ('-' in seq):
+            # Both ref and seq have gaps - this is a delins (deletion-insertion) event
+            # Find the mutation region (where ref and seq differ or have gaps)
+            first_mut_index = None
+            last_mut_index = None
+            
+            # Find the start and end of mutation region
+            for i in range(len(ref)):
+                if ref[i] != seq[i] or ref[i] == '-' or seq[i] == '-':
+                    if first_mut_index is None:
+                        first_mut_index = i
+                    last_mut_index = i
+            
+            # Collect reference and query bases in the mutation region only
+            ref_bases = []
+            seq_bases = []
+            
+            if first_mut_index is not None:
+                for i in range(first_mut_index, last_mut_index + 1):
+                    if ref[i] != '-':
+                        ref_bases.append(ref[i])
+                    if seq[i] != '-':
+                        seq_bases.append(seq[i])
+            
+            ref_nogap = ''.join(ref_bases)
+            seq_nogap = ''.join(seq_bases)
+            
+            # This is a delins event
+            mutation_type = MutationType.INDEL
+            
+            # Calculate position: count ref bases before mutation region
+            if first_mut_index is not None:
+                ref_non_gap_before = sum(1 for i in range(first_mut_index) if ref[i] != '-')
+                loc_start = start_pos + ref_non_gap_before
+                if ref_nogap:
+                    loc_end = loc_start + len(ref_nogap) - 1
+                else:
+                    loc_end = loc_start
+            else:
+                loc_start = start_pos
+                loc_end = start_pos
         else:
             # Other cases fall back to length/content comparison classification
             # But first check if this should be complex mutation based on both length change and content change
@@ -310,24 +420,28 @@ class MutationIdentifier:
                 seq_nogap = seq_nogap[prefix_len:]
                 loc_start += prefix_len
 
-            # Trim common suffix
-            suffix_len = 0
-            max_suf = min(len(ref_nogap), len(seq_nogap))
-            while (
-                suffix_len < max_suf
-                and ref_nogap[-(suffix_len + 1)] == seq_nogap[-(suffix_len + 1)]
-            ):
-                suffix_len += 1
-            if suffix_len > 0:
-                if suffix_len < len(ref_nogap):
-                    ref_nogap = ref_nogap[:-suffix_len]
-                else:
-                    ref_nogap = ""
-                if suffix_len < len(seq_nogap):
-                    seq_nogap = seq_nogap[:-suffix_len]
-                else:
-                    seq_nogap = ""
-                loc_end -= suffix_len
+            # Trim common suffix, but only if both sequences have remaining content
+            # This prevents incorrectly removing suffixes when one sequence is a substring of the other
+            if ref_nogap and seq_nogap:
+                suffix_len = 0
+                max_suf = min(len(ref_nogap), len(seq_nogap))
+                while (
+                    suffix_len < max_suf
+                    and ref_nogap[-(suffix_len + 1)] == seq_nogap[-(suffix_len + 1)]
+                ):
+                    suffix_len += 1
+                # Only trim suffix if it doesn't completely consume the shorter sequence
+                # This prevents cases like 'GA' vs 'A' where 'A' is a suffix of 'GA'
+                if suffix_len > 0 and suffix_len < min(len(ref_nogap), len(seq_nogap)):
+                    if suffix_len < len(ref_nogap):
+                        ref_nogap = ref_nogap[:-suffix_len]
+                    else:
+                        ref_nogap = ""
+                    if suffix_len < len(seq_nogap):
+                        seq_nogap = seq_nogap[:-suffix_len]
+                    else:
+                        seq_nogap = ""
+                    loc_end -= suffix_len
 
             # Ensure loc_end is not before loc_start (can happen if everything matched)
             if loc_end < loc_start:
