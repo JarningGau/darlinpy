@@ -446,6 +446,39 @@ class TestComplexMutationCases:
         expected = ["23del", "51_211delinsA", "238_239insC", "265_266insGG"]
         
         assert mutations == expected, f"Expected {expected}, got {mutations}"
+    
+    def test_case_3_cross_motif_delins_identification(self):
+        """测试案例3：3_97delinsA的正确识别（跨motif的delins事件）
+        
+        这个测试验证了修复后的代码能够正确识别跨motif边界的delins事件。
+        之前的问题是INDEL类型的突变在identify_cas9_events中被过滤掉了。
+        修复后，INDEL和COMPLEX类型的突变都会被正确保留并合并。
+        """
+        # Query sequence from issues.tmp line 119 (removing dashes)
+        # Original: CG-----------------------------------------------------------------------------------------------AGAGCG--------------------------CGCTATGGAGTCGAGAGCGCGCTCGTCGA-----------------------------------------------------------------------------------------------------------ACGATGGGAGCT
+        query = "CGAGAGCGCGCTATGGAGTCGAGAGCGCGCTCGTCGAACGATGGGAGCT"
+        
+        results = analyze_sequences(
+            [query],
+            config='Col1a1',
+            method='exact',
+            min_sequence_length=20,
+            verbose=False,
+            merge_adjacent_mutations=True
+        )
+        
+        # Extract mutation HGVS strings
+        mutations = [m.to_hgvs() for m in results.mutations[0]]
+        expected = ["3_97delinsA", "103_128del", "158_264del"]
+        
+        assert mutations == expected, f"Expected {expected}, got {mutations}"
+        
+        # 验证第一个突变是delins类型（合并后变成COMPLEX类型）
+        first_mutation = results.mutations[0][0]
+        assert first_mutation.loc_start == 3
+        assert first_mutation.loc_end == 97
+        assert first_mutation.seq_new == "A", f"Expected inserted sequence 'A', got '{first_mutation.seq_new}'"
+        assert first_mutation.type.value in ["DI", "C"], f"Expected INDEL or COMPLEX type, got {first_mutation.type.value}"
 
 
 if __name__ == "__main__":

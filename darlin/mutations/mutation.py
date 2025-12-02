@@ -538,8 +538,8 @@ class MutationIdentifier:
                 mutation.confidence = min(1.0, mutation.confidence + 0.1)
                 mutation.confidence_label = "High"
                 cas9_mutations.append(mutation)
-            elif mutation.type in [MutationType.INSERTION, MutationType.DELETION]:
-                # Even if not near cut sites, indels could be Cas9-induced
+            elif mutation.type in [MutationType.INSERTION, MutationType.DELETION, MutationType.INDEL, MutationType.COMPLEX]:
+                # Even if not near cut sites, indels and complex mutations could be Cas9-induced
                 mutation.confidence = max(0.5, mutation.confidence - 0.2)
                 mutation.confidence_label = "Low"
                 cas9_mutations.append(mutation)
