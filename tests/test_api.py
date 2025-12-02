@@ -553,6 +553,42 @@ class TestComplexMutationCases:
         assert first_mutation.loc_end == 265
         assert first_mutation.seq_new == "AGT", f"Expected inserted sequence 'AGT', got '{first_mutation.seq_new}'"
         assert first_mutation.type.value in ["DI", "C"], f"Expected INDEL or COMPLEX type, got {first_mutation.type.value}"
+    
+    def test_case_6_delins_with_insertion_before_gap(self):
+        """测试案例6：gap之前有插入的delins事件正确识别（19_270delinsGGGA）
+        
+        这个测试验证了修复后的代码能够正确识别在gap之前有替换/插入的delins事件。
+        之前的问题是：
+        1. 代码在找到gap之前没有检查替换，导致gap之前的插入被遗漏
+        2. HGVS规范化错误地trim了不对齐的suffix，导致插入序列被截断
+        修复后，代码会：
+        1. 在找到gap之前检查替换，将突变区域扩展到替换的开始位置
+        2. 改进HGVS规范化逻辑，只有当序列长度差<=1时才trim suffix（除非suffix只有1个字符）
+        """
+        # Query sequence from issues.tmp line 144
+        query = "CGCCGGACTGCACGACAGGGGAGGAGCT"
+        
+        results = analyze_sequences(
+            [query],
+            config='Col1a1',
+            method='exact',
+            min_sequence_length=20,
+            verbose=False,
+            merge_adjacent_mutations=True
+        )
+        
+        # Extract mutation HGVS strings
+        mutations = [m.to_hgvs() for m in results.mutations[0]]
+        expected = ["19_270delinsGGGA"]
+        
+        assert mutations == expected, f"Expected {expected}, got {mutations}"
+        
+        # Verify the mutation details
+        first_mutation = results.mutations[0][0]
+        assert first_mutation.loc_start == 19
+        assert first_mutation.loc_end == 270
+        assert first_mutation.seq_new == "GGGA", f"Expected inserted sequence 'GGGA', got '{first_mutation.seq_new}'"
+        assert first_mutation.type.value in ["DI", "C"], f"Expected INDEL or COMPLEX type, got {first_mutation.type.value}"
 
 
 if __name__ == "__main__":

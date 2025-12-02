@@ -247,12 +247,43 @@ class MutationIdentifier:
             first_mut_index = None
             last_mut_index = None
             
-            # Step 1: Find the start of mutation region (first gap)
+            # Step 1: Find the start of mutation region
+            # First, find all gaps
+            gap_indices = []
             for i in range(len(seq)):
                 if seq[i] == '-':
+                    gap_indices.append(i)
                     if first_mut_index is None:
                         first_mut_index = i
                     last_mut_index = i
+            
+            # Step 1.5: Check for substitutions BEFORE the first gap
+            # This handles cases like ref='TCGACGA', seq='GGGA---' where
+            # there are substitutions before the gap that should be included
+            if first_mut_index is not None and first_mut_index > 0:
+                # Look backwards from the first gap to find the start of mutations
+                # Include all positions that are either gaps or substitutions
+                for i in range(first_mut_index - 1, -1, -1):
+                    if ref[i] != '-' and seq[i] != '-':
+                        if ref[i] != seq[i]:
+                            # Found a substitution, extend region backwards
+                            first_mut_index = i
+                        else:
+                            # Found a match, check if we should stop extending backwards
+                            # Stop if we have at least 2 consecutive matches before this
+                            consecutive_matches = 0
+                            for j in range(i - 1, -1, -1):
+                                if j >= 0 and j < len(ref) and j < len(seq) and ref[j] != '-' and seq[j] != '-':
+                                    if ref[j] == seq[j]:
+                                        consecutive_matches += 1
+                                    else:
+                                        break
+                            if consecutive_matches >= 2:
+                                # We have enough matches before, stop extending backwards
+                                break
+                            # Otherwise, this match might be part of the mutation region
+                            # (e.g., in cases like ref='TCGA', seq='GGGA' where GA matches but TC doesn't)
+                            # Continue to include it if there are substitutions nearby
             
             # Step 2: Extend the region to include adjacent substitutions
             # Check positions after the last gap for substitutions
@@ -428,6 +459,7 @@ class MutationIdentifier:
 
             # Trim common suffix, but only if both sequences have remaining content
             # This prevents incorrectly removing suffixes when one sequence is a substring of the other
+            # Also, only trim if the suffix is truly aligned (i.e., both sequences end at the same relative position)
             if ref_nogap and seq_nogap:
                 suffix_len = 0
                 max_suf = min(len(ref_nogap), len(seq_nogap))
@@ -436,9 +468,19 @@ class MutationIdentifier:
                     and ref_nogap[-(suffix_len + 1)] == seq_nogap[-(suffix_len + 1)]
                 ):
                     suffix_len += 1
-                # Only trim suffix if it doesn't completely consume the shorter sequence
-                # This prevents cases like 'GA' vs 'A' where 'A' is a suffix of 'GA'
-                if suffix_len > 0 and suffix_len < min(len(ref_nogap), len(seq_nogap)):
+                # Only trim suffix if:
+                # 1. It doesn't completely consume the shorter sequence
+                # 2. The sequences have similar lengths (difference <= 1) OR the suffix is very short (== 1)
+                # This prevents incorrectly trimming suffixes when sequences have different lengths
+                # (e.g., 'TCGACGA' vs 'GGGA' where 'GA' matches but positions don't align properly)
+                # For sequences with length difference > 1, only trim if suffix is exactly 1 character
+                length_diff = abs(len(ref_nogap) - len(seq_nogap))
+                can_trim_suffix = (
+                    suffix_len > 0 
+                    and suffix_len < min(len(ref_nogap), len(seq_nogap))
+                    and (length_diff <= 1 or (length_diff > 1 and suffix_len == 1))
+                )
+                if can_trim_suffix:
                     if suffix_len < len(ref_nogap):
                         ref_nogap = ref_nogap[:-suffix_len]
                     else:
