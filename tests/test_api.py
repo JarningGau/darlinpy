@@ -660,6 +660,94 @@ class TestComplexMutationCases:
             assert first_mutation.seq_old == "C", f"Expected old sequence 'C', got '{first_mutation.seq_old}'"
             assert first_mutation.seq_new == "A", f"Expected new sequence 'A', got '{first_mutation.seq_new}'"
 
+    def test_issue_example_1_large_delins_ACAACA(self):
+        """issues.tmp Example #1：大片段delins，插入序列为 ACAACA（19_266delinsACAACA）
+        
+        对应 issues.tmp 中 Example #1（行165-171）：
+        - Reference: CGCCGGACTGCACGACAGTCGAC-GATGGAGTCGACACGACTCGCGCATACGATGGAGTCGACTACAGTCGCTACGACGATGGAGTCGCGAGCGCTATGAGCGACTATGGAGTCGATACGATACGCGCACGCTATGGAGTCGAGAGCGCGCTCGTCGACTATGGAGTCGCGACTGTACGCACACGCGATGGAGTCGATAGTATGCGTACACGCGATGGAGTCGAGTCGAGACGCTGACGATATGGAGTCGATACGTAGCACGCAGACGATGGGAGCT
+        - Query:    CGCCGGACTGCACGACAGACAACA---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------GATGGGAGCT
+        删除所有'-'后的 query 为：
+        CGCCGGACTGCACGACAGACAACAGATGGGAGCT
+        
+        期望 HGVS 为：19_266delinsACAACA
+        """
+        query = "CGCCGGACTGCACGACAGACAACAGATGGGAGCT"
+
+        results = analyze_sequences(
+            [query],
+            config='Col1a1',
+            method='exact',
+            min_sequence_length=20,
+            verbose=False,
+            merge_adjacent_mutations=True,
+        )
+
+        mutations = [m.to_hgvs() for m in results.mutations[0]]
+        expected = ["19_266delinsACAACA"]
+        assert mutations == expected, f"Expected {expected}, got {mutations}"
+
+        first_mutation = results.mutations[0][0]
+        assert first_mutation.loc_start == 19
+        assert first_mutation.loc_end == 266
+        assert (
+            first_mutation.seq_new == "ACAACA"
+        ), f"Expected inserted sequence 'ACAACA', got '{first_mutation.seq_new}'"
+        # delins 事件类型可以是 INDEL(DI) 或 COMPLEX(C)
+        assert first_mutation.type.value in [
+            "DI",
+            "C",
+        ], f"Expected INDEL or COMPLEX type, got {first_mutation.type.value}"
+
+    def test_issue_example_2_delins_and_insertion(self):
+        """issues.tmp Example #2：delins + 远端插入（19_238delinsCCGA,265_266insAG）
+        
+        对应 issues.tmp 中 Example #2（行173-179）：
+        - Reference: CGCCGGACTGCACGACAGTCGACGATGGAGTCGACACGACTCGCGCATACGATGGAGTCGACTACAGTCGCTACGACGATGGAGTCGCGAGCGCTATGAGCGACTATGGAGTCGATACGATACGCGCACGCTATGGAGTCGAGAGCGCGCTCGTCGACTATGGAGTCGCGACTGTACGCACACGCGATGGAGTCGATAGTATGCGTACACGCGATGGAGTCGAGTCGAGACGCTGACGATATGGAGTCGATACGTAGCACGCAGA--CGATGGGAGCT
+        - Query:    CGCCGGACTGCACGACAGCCGA------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ATATGGAGTCGATACGTAGCACGCAGAAGCGATGGGAGCT
+        删除所有'-'后的 query 为：
+        CGCCGGACTGCACGACAGCCGAATATGGAGTCGATACGTAGCACGCAGAAGCGATGGGAGCT
+        
+        期望 HGVS 为：19_238delinsCCGA,265_266insAG
+        """
+        query = (
+            "CGCCGGACTGCACGACAGCCGA"
+            "ATATGGAGTCGATACGTAGCACGCAGAAGCGATGGGAGCT"
+        )
+
+        results = analyze_sequences(
+            [query],
+            config='Col1a1',
+            method='exact',
+            min_sequence_length=20,
+            verbose=False,
+            merge_adjacent_mutations=True,
+        )
+
+        mutations = [m.to_hgvs() for m in results.mutations[0]]
+        expected = ["19_238delinsCCGA", "265_266insAG"]
+        assert mutations == expected, f"Expected {expected}, got {mutations}"
+
+        # 验证第一个 delins 事件
+        first_mutation = results.mutations[0][0]
+        assert first_mutation.loc_start == 19
+        assert first_mutation.loc_end == 238
+        assert (
+            first_mutation.seq_new == "CCGA"
+        ), f"Expected inserted sequence 'CCGA', got '{first_mutation.seq_new}'"
+        assert first_mutation.type.value in [
+            "DI",
+            "C",
+        ], f"Expected INDEL or COMPLEX type, got {first_mutation.type.value}"
+
+        # 验证第二个插入事件
+        second_mutation = results.mutations[0][1]
+        assert second_mutation.loc_start == 265
+        # 插入使用 start==end 表示
+        assert second_mutation.loc_end == 265
+        assert (
+            second_mutation.seq_new == "AG"
+        ), f"Expected inserted sequence 'AG', got '{second_mutation.seq_new}'"
+
 
 if __name__ == "__main__":
     pytest.main([__file__]) 

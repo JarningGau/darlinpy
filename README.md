@@ -1,6 +1,6 @@
 # DARLIN Python
 
-**Version:** 0.1.8
+**Version:** 0.1.9
 
 This repository is based on https://gitlab.com/hormozlab/carlin and https://github.com/ShouWenWang-Lab/Custom_CARLIN. The original CARLIN pipeline is implemented in MATLAB. Here, we provide a Python implementation of CARLIN sequence analysis tools for CRISPR-Cas9 lineage tracing. This repository is only focus on DARLIN sequence alignment and mutation calling.
 
