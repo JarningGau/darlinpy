@@ -589,6 +589,42 @@ class TestComplexMutationCases:
         assert first_mutation.loc_end == 270
         assert first_mutation.seq_new == "GGGA", f"Expected inserted sequence 'GGGA', got '{first_mutation.seq_new}'"
         assert first_mutation.type.value in ["DI", "C"], f"Expected INDEL or COMPLEX type, got {first_mutation.type.value}"
+    
+    def test_case_7_complex_delins_with_multiple_insertions(self):
+        """测试案例7：复杂delins事件中多个插入的正确识别（97_244delinsGCGCGTATCGTATCGACTCCAT）
+        
+        这个测试验证了修复后的代码能够正确识别包含多个插入片段的复杂delins事件。
+        之前的问题是HGVS规范化错误地trim了不对齐的prefix，导致插入序列被截断。
+        修复后，代码会：
+        1. 检查序列长度差异，只有当长度差<=1时才trim prefix（除非prefix只有1个字符且长度差<=3）
+        2. 避免trim不对齐的prefix，确保插入序列完整
+        """
+        # Query sequence from issues.tmp line 152
+        query = "CGCCGGACTGCACGACAG----------------------------------------------------------CGATGGAGTCGCGAGCGCTA------------------------------------------------GCGCG----TATCGTATCGACTCCAT-------------------------------------------------------------------------------------AGTCGATACGTAGCACGCAGAGGCGATGGGAGCT"
+        query_clean = query.replace('-', '')
+        
+        results = analyze_sequences(
+            [query_clean],
+            config='Col1a1',
+            method='exact',
+            min_sequence_length=20,
+            verbose=False,
+            merge_adjacent_mutations=True
+        )
+        
+        # Extract mutation HGVS strings
+        mutations = [m.to_hgvs() for m in results.mutations[0]]
+        expected = ["19_76del", "97_244delinsGCGCGTATCGTATCGACTCCAT", "265_266insGG"]
+        
+        assert mutations == expected, f"Expected {expected}, got {mutations}"
+        
+        # Verify the second mutation (delins) details
+        if len(results.mutations[0]) >= 2:
+            second_mutation = results.mutations[0][1]
+            assert second_mutation.loc_start == 97
+            assert second_mutation.loc_end == 244
+            assert second_mutation.seq_new == "GCGCGTATCGTATCGACTCCAT", f"Expected inserted sequence 'GCGCGTATCGTATCGACTCCAT', got '{second_mutation.seq_new}'"
+            assert second_mutation.type.value in ["DI", "C"], f"Expected INDEL or COMPLEX type, got {second_mutation.type.value}"
 
 
 if __name__ == "__main__":

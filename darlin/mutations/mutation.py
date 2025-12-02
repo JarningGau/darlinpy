@@ -447,12 +447,21 @@ class MutationIdentifier:
         # complex/indel (delins) events so that we always use the minimal
         # representation, but keep pure substitutions unchanged.
         if mutation_type in (MutationType.COMPLEX, MutationType.INDEL) and ref_nogap and seq_nogap:
-            # Trim common prefix
+            # Trim common prefix, but only if sequences have similar lengths
+            # This prevents incorrectly trimming prefixes when sequences have different lengths
+            # (e.g., 'GAGAGCGCGCTCG' vs 'GCGCG' where 'G' matches but positions don't align properly)
+            length_diff = abs(len(ref_nogap) - len(seq_nogap))
             prefix_len = 0
             max_pref = min(len(ref_nogap), len(seq_nogap))
             while prefix_len < max_pref and ref_nogap[prefix_len] == seq_nogap[prefix_len]:
                 prefix_len += 1
-            if prefix_len > 0:
+            # Only trim prefix if sequences have similar lengths (difference <= 1) OR prefix is very short (== 1) and length diff <= 3
+            # For sequences with large length differences, don't trim prefix as they likely don't align properly
+            can_trim_prefix = (
+                prefix_len > 0 
+                and (length_diff <= 1 or (length_diff <= 3 and prefix_len == 1))
+            )
+            if can_trim_prefix:
                 ref_nogap = ref_nogap[prefix_len:]
                 seq_nogap = seq_nogap[prefix_len:]
                 loc_start += prefix_len
