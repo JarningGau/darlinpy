@@ -600,11 +600,10 @@ class TestComplexMutationCases:
         2. 避免trim不对齐的prefix，确保插入序列完整
         """
         # Query sequence from issues.tmp line 152
-        query = "CGCCGGACTGCACGACAG----------------------------------------------------------CGATGGAGTCGCGAGCGCTA------------------------------------------------GCGCG----TATCGTATCGACTCCAT-------------------------------------------------------------------------------------AGTCGATACGTAGCACGCAGAGGCGATGGGAGCT"
-        query_clean = query.replace('-', '')
+        query = "CGCCGGACTGCACGACAGCGATGGAGTCGCGAGCGCTAGCGCGTATCGTATCGACTCCATAGTCGATACGTAGCACGCAGAGGCGATGGGAGCT"
         
         results = analyze_sequences(
-            [query_clean],
+            [query],
             config='Col1a1',
             method='exact',
             min_sequence_length=20,
@@ -625,6 +624,41 @@ class TestComplexMutationCases:
             assert second_mutation.loc_end == 244
             assert second_mutation.seq_new == "GCGCGTATCGTATCGACTCCAT", f"Expected inserted sequence 'GCGCGTATCGTATCGACTCCAT', got '{second_mutation.seq_new}'"
             assert second_mutation.type.value in ["DI", "C"], f"Expected INDEL or COMPLEX type, got {second_mutation.type.value}"
+    
+    def test_case_8_substitution_normalization(self):
+        """测试案例8：替换突变的HGVS规范化（23C>A）
+        
+        这个测试验证了修复后的代码能够正确规范化替换突变，只报告实际不同的部分。
+        之前的问题是替换类型的突变没有进行HGVS规范化，导致报告了整个区域而不是只报告实际不同的碱基。
+        修复后，代码会对替换类型也进行prefix/suffix trim，确保只报告实际改变的碱基。
+        """
+        # Query sequence from issues.tmp line 160
+        query = "CGCCGGACTGCACGACAGTCGAAGATGGAGTCGACACGACTCGCGCATAGATATGGAGTCGATACGTAGCACGCAGCGATGGGAGCT"
+        
+        results = analyze_sequences(
+            [query],
+            config='Col1a1',
+            method='exact',
+            min_sequence_length=20,
+            verbose=False,
+            merge_adjacent_mutations=True
+        )
+        
+        # Extract mutation HGVS strings
+        mutations = [m.to_hgvs() for m in results.mutations[0]]
+        expected = ["23C>A", "50_237del", "265_265del"]
+        
+        assert mutations == expected, f"Expected {expected}, got {mutations}"
+        
+        # Verify the first mutation (substitution) details
+        from darlin.mutations.mutation import MutationType
+        if len(results.mutations[0]) >= 1:
+            first_mutation = results.mutations[0][0]
+            assert first_mutation.type == MutationType.SUBSTITUTION
+            assert first_mutation.loc_start == 23
+            assert first_mutation.loc_end == 23
+            assert first_mutation.seq_old == "C", f"Expected old sequence 'C', got '{first_mutation.seq_old}'"
+            assert first_mutation.seq_new == "A", f"Expected new sequence 'A', got '{first_mutation.seq_new}'"
 
 
 if __name__ == "__main__":

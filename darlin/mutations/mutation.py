@@ -443,10 +443,10 @@ class MutationIdentifier:
                 # For insertion case, end position equals start position
                 loc_end = start_pos
 
-        # HGVS-style normalization: shrink shared prefix/suffix only for
-        # complex/indel (delins) events so that we always use the minimal
-        # representation, but keep pure substitutions unchanged.
-        if mutation_type in (MutationType.COMPLEX, MutationType.INDEL) and ref_nogap and seq_nogap:
+        # HGVS-style normalization: shrink shared prefix/suffix for
+        # complex/indel (delins) and substitution events so that we always use the minimal
+        # representation. This ensures substitutions only report the actual changed bases.
+        if mutation_type in (MutationType.COMPLEX, MutationType.INDEL, MutationType.SUBSTITUTION) and ref_nogap and seq_nogap:
             # Trim common prefix, but only if sequences have similar lengths
             # This prevents incorrectly trimming prefixes when sequences have different lengths
             # (e.g., 'GAGAGCGCGCTCG' vs 'GCGCG' where 'G' matches but positions don't align properly)
