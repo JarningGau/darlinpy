@@ -101,12 +101,8 @@ class Mutation:
                 return f"{prefix}{self.loc_start}_{self.loc_end}{self.seq_old}>{self.seq_new}"
         
         elif self.type == MutationType.DELETION:
-            if self.loc_start == self.loc_end:
-                # Single base deletion
-                return f"{prefix}{self.loc_start}del"
-            else:
-                # Multi-base deletion
-                return f"{prefix}{self.loc_start}_{self.loc_end}del"
+            # Always use range format for deletions (e.g., 2_2del for single base, 2_5del for multi-base)
+            return f"{prefix}{self.loc_start}_{self.loc_end}del"
         
         elif self.type == MutationType.INSERTION:
             # Insertion mutation

@@ -443,7 +443,7 @@ class TestComplexMutationCases:
         
         # Extract mutation HGVS strings
         mutations = [m.to_hgvs() for m in results.mutations[0]]
-        expected = ["23del", "51_211delinsA", "238_239insC", "265_266insGG"]
+        expected = ["23_23del", "51_211delinsA", "238_239insC", "265_266insGG"]
         
         assert mutations == expected, f"Expected {expected}, got {mutations}"
     
@@ -479,6 +479,48 @@ class TestComplexMutationCases:
         assert first_mutation.loc_end == 97
         assert first_mutation.seq_new == "A", f"Expected inserted sequence 'A', got '{first_mutation.seq_new}'"
         assert first_mutation.type.value in ["DI", "C"], f"Expected INDEL or COMPLEX type, got {first_mutation.type.value}"
+    
+    def test_case_4_single_base_deletion_format(self):
+        """测试案例4：单碱基缺失的HGVS格式（2_2del而不是2del）
+        
+        这个测试验证了修复后的代码能够正确格式化单碱基缺失。
+        根据HGVS标准，即使是单碱基缺失也应该使用范围格式（如2_2del）。
+        """
+        # 直接测试Mutation对象的to_hgvs方法，验证单碱基缺失的格式
+        from darlin.mutations.mutation import Mutation, MutationType
+        
+        # 创建单碱基缺失突变（位置2）
+        single_base_del = Mutation(
+            type=MutationType.DELETION,
+            loc_start=2,
+            loc_end=2,
+            seq_old="G",
+            seq_new=""
+        )
+        
+        # 验证格式为2_2del而不是2del
+        hgvs_str = single_base_del.to_hgvs()
+        assert hgvs_str == "2_2del", f"Expected '2_2del', got '{hgvs_str}'"
+        
+        # 测试另一个单碱基缺失
+        another_del = Mutation(
+            type=MutationType.DELETION,
+            loc_start=23,
+            loc_end=23,
+            seq_old="A",
+            seq_new=""
+        )
+        assert another_del.to_hgvs() == "23_23del", f"Expected '23_23del', got '{another_del.to_hgvs()}'"
+        
+        # 验证多碱基缺失仍然使用范围格式
+        multi_base_del = Mutation(
+            type=MutationType.DELETION,
+            loc_start=24,
+            loc_end=35,
+            seq_old="CGATGGAGTCG",
+            seq_new=""
+        )
+        assert multi_base_del.to_hgvs() == "24_35del", f"Expected '24_35del', got '{multi_base_del.to_hgvs()}'"
 
 
 if __name__ == "__main__":
