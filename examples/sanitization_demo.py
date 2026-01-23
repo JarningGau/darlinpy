@@ -5,8 +5,8 @@ CARLIN序列标准化演示
 展示prefix/postfix和保守区域标准化的实际效果
 """
 
-from darlin.alignment import CARLINAligner, create_default_aligner, AlignedSEQ, SequenceSanitizer
-from darlin.config import get_original_carlin_config
+from darlinpy.alignment import CARLINAligner, create_default_aligner, AlignedSEQ, SequenceSanitizer
+from darlinpy.config import get_original_carlin_config
 
 
 def demo_prefix_postfix_sanitization():

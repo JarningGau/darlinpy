@@ -5,7 +5,7 @@ DARLIN主API模块测试
 
 import pytest
 import time
-from darlin.api import analyze_sequences, AnalysisResult
+from darlinpy.api import analyze_sequences, AnalysisResult
 
 
 class TestAnalysisResult:
@@ -40,9 +40,9 @@ class TestAnalysisResult:
     
     def test_analysis_result_properties(self):
         """测试AnalysisResult属性方法"""
-        from darlin.calling.allele_data import AlleleCallResult
-        from darlin.mutations.mutation import Mutation, MutationType
-        from darlin.alignment.aligned_seq import AlignedSEQ
+        from darlinpy.calling.allele_data import AlleleCallResult
+        from darlinpy.mutations.mutation import Mutation, MutationType
+        from darlinpy.alignment.aligned_seq import AlignedSEQ
         
         # 创建模拟数据
         aligned_seq = AlignedSEQ(
@@ -83,9 +83,9 @@ class TestAnalysisResult:
     
     def test_to_df_method(self):
         """测试to_df方法"""
-        from darlin.calling.allele_data import AlleleCallResult
-        from darlin.mutations.mutation import Mutation, MutationType
-        from darlin.alignment.aligned_seq import AlignedSEQ
+        from darlinpy.calling.allele_data import AlleleCallResult
+        from darlinpy.mutations.mutation import Mutation, MutationType
+        from darlinpy.alignment.aligned_seq import AlignedSEQ
         
         # 创建模拟数据
         aligned_seq = AlignedSEQ(
@@ -195,7 +195,7 @@ class TestAnalyzeSequences:
     def test_analyze_valid_sequences_basic(self):
         """测试基本的有效序列分析"""
         # 创建基于CARLIN结构的测试序列
-        from darlin.config.amplicon_configs import load_carlin_config_by_locus
+        from darlinpy.config.amplicon_configs import load_carlin_config_by_locus
         carlin_config = load_carlin_config_by_locus('Col1a1')
         carlin_ref = carlin_config.get_full_reference_sequence()
         
@@ -224,7 +224,7 @@ class TestAnalyzeSequences:
     
     def test_analyze_sequences_exact_method(self):
         """测试精确方法"""
-        from darlin.config.amplicon_configs import load_carlin_config_by_locus
+        from darlinpy.config.amplicon_configs import load_carlin_config_by_locus
         carlin_config = load_carlin_config_by_locus('Col1a1')
         carlin_ref = carlin_config.get_full_reference_sequence()
         sequences = [carlin_ref[:200]]
@@ -239,7 +239,7 @@ class TestAnalyzeSequences:
 
     def test_analyze_sequences_expected_delins_allele(self):
         """测试特定等位基因的delins注释是否为23_265delinsG"""
-        from darlin import analyze_sequences as analyze_sequences_public
+        from darlinpy import analyze_sequences as analyze_sequences_public
 
         sequences = [
             "CGCCGGACTGCACGACAGTCGAGCGATGGGAGCT",
@@ -258,7 +258,7 @@ class TestAnalyzeSequences:
     
     def test_analyze_sequences_no_mutations(self):
         """测试不进行突变注释"""
-        from darlin.config.amplicon_configs import load_carlin_config_by_locus
+        from darlinpy.config.amplicon_configs import load_carlin_config_by_locus
         carlin_config = load_carlin_config_by_locus('Col1a1')
         carlin_ref = carlin_config.get_full_reference_sequence()
         sequences = [carlin_ref[:200]]
@@ -274,7 +274,7 @@ class TestAnalyzeSequences:
     
     def test_analyze_sequences_verbose(self, capsys):
         """测试详细输出模式"""
-        from darlin.config.amplicon_configs import load_carlin_config_by_locus
+        from darlinpy.config.amplicon_configs import load_carlin_config_by_locus
         carlin_config = load_carlin_config_by_locus('Col1a1')
         carlin_ref = carlin_config.get_full_reference_sequence()
         sequences = [carlin_ref[:200]]
@@ -288,7 +288,7 @@ class TestAnalyzeSequences:
     
     def test_analyze_different_configs(self):
         """测试不同配置"""
-        from darlin.config.amplicon_configs import load_carlin_config_by_locus
+        from darlinpy.config.amplicon_configs import load_carlin_config_by_locus
         carlin_config = load_carlin_config_by_locus('Col1a1')
         carlin_ref = carlin_config.get_full_reference_sequence()
         sequences = [carlin_ref[:200]]
@@ -302,7 +302,7 @@ class TestAnalyzeSequences:
     
     def test_analyze_custom_parameters(self):
         """测试自定义参数"""
-        from darlin.config.amplicon_configs import load_carlin_config_by_locus
+        from darlinpy.config.amplicon_configs import load_carlin_config_by_locus
         carlin_config = load_carlin_config_by_locus('Col1a1')
         carlin_ref = carlin_config.get_full_reference_sequence()
         sequences = [carlin_ref[:200]]
@@ -322,7 +322,7 @@ class TestConfigLoading:
     
     def test_load_config_by_locus(self):
         """测试通过locus名称加载配置"""
-        from darlin.config.amplicon_configs import load_carlin_config_by_locus
+        from darlinpy.config.amplicon_configs import load_carlin_config_by_locus
         
         config = load_carlin_config_by_locus('Col1a1')
         assert config is not None
@@ -339,10 +339,10 @@ class TestStatistics:
     
     def test_generate_summary_stats(self):
         """测试统计信息生成"""
-        from darlin.api import _generate_summary_stats
-        from darlin.alignment.aligned_seq import AlignedSEQ
-        from darlin.calling.allele_data import AlleleCallResult
-        from darlin.mutations.mutation import Mutation, MutationType
+        from darlinpy.api import _generate_summary_stats
+        from darlinpy.alignment.aligned_seq import AlignedSEQ
+        from darlinpy.calling.allele_data import AlleleCallResult
+        from darlinpy.mutations.mutation import Mutation, MutationType
         
         # 创建模拟数据
         sequences = ["ACGTACGT" * 25, "TGCATGCA" * 25]  # 200bp序列
@@ -487,7 +487,7 @@ class TestComplexMutationCases:
         根据HGVS标准，即使是单碱基缺失也应该使用范围格式（如2_2del）。
         """
         # 直接测试Mutation对象的to_hgvs方法，验证单碱基缺失的格式
-        from darlin.mutations.mutation import Mutation, MutationType
+        from darlinpy.mutations.mutation import Mutation, MutationType
         
         # 创建单碱基缺失突变（位置2）
         single_base_del = Mutation(
@@ -651,7 +651,7 @@ class TestComplexMutationCases:
         assert mutations == expected, f"Expected {expected}, got {mutations}"
         
         # Verify the first mutation (substitution) details
-        from darlin.mutations.mutation import MutationType
+        from darlinpy.mutations.mutation import MutationType
         if len(results.mutations[0]) >= 1:
             first_mutation = results.mutations[0][0]
             assert first_mutation.type == MutationType.SUBSTITUTION

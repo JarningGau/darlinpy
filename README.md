@@ -26,13 +26,13 @@ pip install -e .
 pip install -e ".[dev]"
 
 # Verify installation
-python -c "import darlin; print(f'DARLIN Python v{darlin.__version__} installed successfully!')"
+python -c "import darlinpy; print(f'DARLIN Python v{darlinpy.__version__} installed successfully!')"
 ```
 
 ### Basic Usage
 
 ```python
-from darlin import analyze_sequences
+from darlinpy import analyze_sequences
 
 # Analyze CARLIN sequences
 sequences = [
@@ -54,7 +54,7 @@ results.to_df()
 ### Advanced Usage
 
 ```python
-from darlin import analyze_sequences, AmpliconConfig, build_carlin_config
+from darlinpy import analyze_sequences, AmpliconConfig, build_carlin_config
 
 # Custom amplicon configuration
 ## Col1a1 array (CA)

@@ -6,11 +6,11 @@
 
 import unittest
 import numpy as np
-from darlin.alignment import AlignedSEQ, AlignedSEQMotif, CARLINAligner, create_default_aligner
-from darlin.calling import AlleleCaller, AlleleCallResult
-from darlin.config import get_original_carlin_config
+from darlinpy.alignment import AlignedSEQ, AlignedSEQMotif, CARLINAligner, create_default_aligner
+from darlinpy.calling import AlleleCaller, AlleleCallResult
+from darlinpy.config import get_original_carlin_config
 from typing import Optional
-from darlin.config.amplicon_configs import load_carlin_config_by_locus
+from darlinpy.config.amplicon_configs import load_carlin_config_by_locus
 
 
 class TestAlleleData(unittest.TestCase):

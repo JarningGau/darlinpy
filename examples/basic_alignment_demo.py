@@ -6,7 +6,7 @@ DARLIN Python 基础序列比对演示
 """
 
 import numpy as np
-from darlin.alignment.cas9_align import cas9_align, nt2int, int2nt, print_cas9_alignment
+from darlinpy.alignment.cas9_align import cas9_align, nt2int, int2nt, print_cas9_alignment
 
 
 def create_nuc44_matrix():

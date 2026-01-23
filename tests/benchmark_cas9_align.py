@@ -13,7 +13,7 @@ import random
 # 添加路径以便导入模块
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from darlin.alignment.cas9_align import (
+from darlinpy.alignment.cas9_align import (
     cas9_align_py,
     nt2int,
     HAS_CPP_IMPL,

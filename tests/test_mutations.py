@@ -5,13 +5,13 @@ CARLIN突变注释模块测试
 
 import pytest
 import numpy as np
-from darlin.mutations import (
+from darlinpy.mutations import (
     Mutation, 
     MutationType, 
     MutationIdentifier, 
     annotate_mutations
 )
-from darlin.alignment.aligned_seq import AlignedSEQ, AlignedSEQMotif
+from darlinpy.alignment.aligned_seq import AlignedSEQ, AlignedSEQMotif
 
 
 class TestMutation:

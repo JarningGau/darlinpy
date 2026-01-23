@@ -10,7 +10,7 @@ import os
 # 添加路径以便导入模块
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from darlin.config import AmpliconConfig, get_original_carlin_config, ScoringConfig, get_default_scoring_config
+from darlinpy.config import AmpliconConfig, get_original_carlin_config, ScoringConfig, get_default_scoring_config
 
 
 class TestAmpliconConfig:

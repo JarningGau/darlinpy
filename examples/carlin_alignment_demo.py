@@ -5,8 +5,8 @@ CARLIN比对系统完整演示
 展示如何使用集成的CARLIN比对器进行真实的序列分析
 """
 
-from darlin.alignment import CARLINAligner, align_to_carlin, create_default_aligner
-from darlin.config import get_original_carlin_config
+from darlinpy.alignment import CARLINAligner, align_to_carlin, create_default_aligner
+from darlinpy.config import get_original_carlin_config
 
 
 def demo_perfect_carlin_sequence():

@@ -9,14 +9,14 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from darlin.mutations import (
+from darlinpy.mutations import (
     Mutation, 
     MutationType, 
     MutationIdentifier, 
     annotate_mutations
 )
-from darlin.alignment.aligned_seq import AlignedSEQ
-from darlin.config.amplicon_configs import ORIGINAL_CARLIN
+from darlinpy.alignment.aligned_seq import AlignedSEQ
+from darlinpy.config.amplicon_configs import ORIGINAL_CARLIN
 
 
 def demo_basic_mutations():

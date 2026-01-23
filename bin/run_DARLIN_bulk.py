@@ -24,8 +24,8 @@ from Bio.Seq import Seq
 from fuzzysearch import find_near_matches
 from tqdm import tqdm
 from umi_tools import UMIClusterer
-from darlin import analyze_sequences
-from darlin.config.amplicon_configs import load_carlin_config_by_locus
+from darlinpy import analyze_sequences
+from darlinpy.config.amplicon_configs import load_carlin_config_by_locus
 
 
 # ============================================================================

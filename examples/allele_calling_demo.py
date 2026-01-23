@@ -12,10 +12,10 @@ import numpy as np
 from typing import List, Tuple, Optional, Union
 
 # CARLIN imports
-from darlin.config import get_original_carlin_config
-from darlin.alignment import create_default_aligner, AlignedSEQ, AlignedSEQMotif
-from darlin.calling import AlleleCaller, AlleleCallResult, BulkAlleleCallResult, AlleleCallStatistics
-from darlin.config.amplicon_configs import load_carlin_config_by_locus
+from darlinpy.config import get_original_carlin_config
+from darlinpy.alignment import create_default_aligner, AlignedSEQ, AlignedSEQMotif
+from darlinpy.calling import AlleleCaller, AlleleCallResult, BulkAlleleCallResult, AlleleCallStatistics
+from darlinpy.config.amplicon_configs import load_carlin_config_by_locus
 
 
 def create_sample_sequences() -> List[AlignedSEQ]:

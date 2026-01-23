@@ -15,8 +15,8 @@ try:
 
     ext_modules.append(
         Pybind11Extension(
-            "darlin.alignment._cas9_align",
-            ["darlin/alignment/_cas9_align.cpp"],
+            "darlinpy.alignment._cas9_align",
+            ["darlinpy/alignment/_cas9_align.cpp"],
             cxx_std=17,
         )
     )
@@ -28,7 +28,7 @@ except ImportError:
     )
 
 def get_version():
-    with open("darlin/__init__.py", "r") as f:
+    with open("darlinpy/__init__.py", "r") as f:
         for line in f:
             if line.startswith("__version__"):
                 return line.split("=")[1].strip().strip('"').strip("'")
@@ -90,7 +90,7 @@ setup(
     },
     include_package_data=True,
     zip_safe=False,
-    package_data={"darlin.config.data": ["*.json"]},
+    package_data={"darlinpy.config.data": ["*.json"]},
     ext_modules=ext_modules,
     cmdclass=cmdclass,
 )

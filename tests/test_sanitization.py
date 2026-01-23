@@ -9,8 +9,8 @@ import os
 # 添加路径以便导入模块
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from darlin.alignment import AlignedSEQ, AlignedSEQMotif, SequenceSanitizer, desemble_sequence, create_default_aligner
-from darlin.config import get_original_carlin_config
+from darlinpy.alignment import AlignedSEQ, AlignedSEQMotif, SequenceSanitizer, desemble_sequence, create_default_aligner
+from darlinpy.config import get_original_carlin_config
 
 
 class TestAlignedSEQMotif:
