@@ -405,5 +405,7 @@ def get_original_carlin_config() -> AmpliconConfig:
 try:
     ORIGINAL_CARLIN = get_original_carlin_config()
 except FileNotFoundError:
-    # If configuration file not found, use hardcoded default configuration
-    ORIGINAL_CARLIN = AmpliconConfig()
+    # If configuration file not found, keep ORIGINAL_CARLIN as None so that
+    # importing the package still succeeds. Users attempting to access the
+    # default configuration will get a clear FileNotFoundError instead.
+    ORIGINAL_CARLIN = None

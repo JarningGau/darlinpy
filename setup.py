@@ -90,7 +90,11 @@ setup(
     },
     include_package_data=True,
     zip_safe=False,
-    package_data={"darlinpy.config.data": ["*.json"]},
+    # Ensure CARLIN configuration JSON files are installed with the package
+    # The patterns are relative to the "darlinpy.config" package directory.
+    package_data={
+        "darlinpy.config": ["data/*.json"],
+    },
     ext_modules=ext_modules,
     cmdclass=cmdclass,
 )
