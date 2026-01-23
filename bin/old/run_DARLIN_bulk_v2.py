@@ -20,6 +20,7 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from Bio import SeqIO
 from Bio.Seq import Seq
 from fuzzysearch import find_near_matches
 from tqdm import tqdm
@@ -136,12 +137,6 @@ Examples:
     parser.add_argument('--log-level', type=str, default='INFO',
                         choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'],
                         help='Logging level')
-    parser.add_argument('--test', action='store_true',
-                        help='Test mode: only process first 10000 lines (approximately 2500 reads)')
-    parser.add_argument('--saturation-analysis', action='store_true',
-                        help='Enable saturation analysis (only runs when this flag is provided)')
-    parser.add_argument('--sample-n', type=int, default=None,
-                        help='Sample n reads for analysis')
     
     return parser.parse_args()
 
@@ -430,15 +425,10 @@ def correct_lineage_and_umi(
     for i in range(n_iter):
         logger.info(f"Iteration {i+1}/{n_iter}")
         # 1) collapse lineage_bc globally by length, using length-aware Hamming threshold
-        out["__bc_len__"] = out["lineage_bc_corr"].str.len().astype(int)
+        out["__bc_len__"] = out["lineage_bc_corr"].str.len()
         bc_parent_total = {}
         for blen, sub in tqdm(out.groupby(["__bc_len__"]), desc="Collapsing barcodes (length-aware HD global)", leave=True):
             cnt = Counter(dict(sub.groupby("lineage_bc_corr")[count_col].sum()))
-            # Ensure blen is an integer (groupby key might be tuple for multi-column, but should be scalar for single column)
-            if isinstance(blen, (tuple, list)):
-                blen = int(blen[0])
-            else:
-                blen = int(blen)
             if blen == 0:
                 continue
             # threshold scales with length; ensure at least distance 1
@@ -522,16 +512,9 @@ def assemble_pe_reads(in_fq1, in_fq2, out_fq, log, pear_path="~/software/pear", 
     logger.info(f"PEAR assembly completed. Log saved to: {log}")
 
 
-def extract_lineage_barcode_and_umi(fq_file, umi_len, p3_seq, p5_seq, max_reads=None):
+def extract_lineage_barcode_and_umi(fq_file, umi_len, p3_seq, p5_seq):
     """
     Extract lineage barcode and UMI from assembled FASTQ file.
-    
-    Args:
-        fq_file: Path to FASTQ file
-        umi_len: UMI length
-        p3_seq: P3 primer sequence
-        p5_seq: P5 primer sequence
-        max_reads: Maximum number of reads to process (None for all reads)
     
     Returns:
         List of tuples (lineage_bc, umi)
@@ -540,12 +523,8 @@ def extract_lineage_barcode_and_umi(fq_file, umi_len, p3_seq, p5_seq, max_reads=
     p3_mm = get_mm_dist(p3_seq)
     p5_mm = get_mm_dist(p5_seq)
     
-    read_count = 0
     with open_fastq_file(fq_file) as fq_handle:
         for (read_id, seq, qual) in tqdm(iter_fastq_raw(fq_handle), desc="Processing reads", unit_scale=True, unit=' reads'):
-            if max_reads is not None and read_count >= max_reads:
-                break
-            read_count += 1
             umi = seq[:umi_len]
             if 'N' in umi:
                 continue
@@ -586,80 +565,6 @@ def concat_and_md5(row):
     concat_str = str(row['aligned_query']) + str(row['aligned_ref'])
     md5_hash = hashlib.md5(concat_str.encode('utf-8')).hexdigest()
     return md5_hash
-
-
-def perform_saturation_analysis(agg_df, sample_rates, output_dir, bc_col='lineage_bc_corr', umi_col='umi_corr', count_col='n_reads', random_seed=42, logger=None):
-    """
-    Perform saturation analysis by sampling reads at different rates on denoised data.
-    
-    Args:
-        agg_df: DataFrame with denoised data, containing corrected barcodes and UMIs
-        sample_rates: List of sampling rates (e.g., [0.01, 0.05, 0.1, ...])
-        output_dir: Directory to save the saturation analysis results
-        bc_col: Column name for lineage barcode (default: 'lineage_bc_corr')
-        umi_col: Column name for UMI (default: 'umi_corr')
-        count_col: Column name for read counts (default: 'n_reads')
-        random_seed: Random seed for reproducibility (default: 42)
-        logger: Logger instance
-    
-    Returns:
-        DataFrame with columns: sample_rates, num_barcodes, num_umis
-    """
-    if logger is None:
-        logger = logging.getLogger(__name__)
-    
-    logger.info("#### Performing saturation analysis on denoised data...")
-    
-    # Set random seed for reproducibility
-    np.random.seed(random_seed)
-    
-    # Expand reads into individual rows for sampling
-    # Create a list of (lineage_bc, UMI) tuples, repeated by read count
-    expanded_data = []
-    for _, row in tqdm(agg_df.iterrows(), total=len(agg_df), desc="Expanding reads for saturation analysis"):
-        lineage_bc = row[bc_col]
-        umi = row[umi_col]
-        reads = int(row[count_col])
-        expanded_data.extend([(lineage_bc, umi)] * reads)
-    
-    total_reads = len(expanded_data)
-    logger.info(f"Total reads for saturation analysis: {total_reads}")
-    
-    saturation_results = []
-    
-    for sample_rate in tqdm(sample_rates, desc="Sampling at different rates"):
-        if sample_rate >= 1.0:
-            # Use all reads
-            sampled_data = expanded_data
-        else:
-            # Sample without replacement
-            n_samples = int(total_reads * sample_rate)
-            if n_samples == 0:
-                n_samples = 1
-            sampled_indices = np.random.choice(total_reads, size=n_samples, replace=False)
-            sampled_data = [expanded_data[i] for i in sampled_indices]
-        
-        # Count unique barcodes and UMIs
-        sampled_df = pd.DataFrame(sampled_data, columns=['lineage_bc', 'UMI'])
-        num_barcodes = sampled_df['lineage_bc'].nunique()
-        num_umis = sampled_df['UMI'].nunique()
-        
-        saturation_results.append({
-            'sample_rates': sample_rate,
-            'num_barcodes': num_barcodes,
-            'num_umis': num_umis
-        })
-        
-        logger.info(f"  Sample rate {sample_rate:.2f}: {num_barcodes} barcodes, {num_umis} UMIs")
-    
-    saturation_df = pd.DataFrame(saturation_results)
-    
-    # Save to CSV
-    output_file = os.path.join(output_dir, 'saturation_analysis.csv')
-    saturation_df.to_csv(output_file, index=False)
-    logger.info(f"Saturation analysis results saved to: {output_file}")
-    
-    return saturation_df
 
 
 # ============================================================================
@@ -771,42 +676,6 @@ def plot_barcode_length_by_editing_events(final, output_dir, unedited_bc_len=276
     plt.close()
 
 
-def plot_saturation_curve(saturation_df, output_dir):
-    """
-    Plot saturation curves for barcodes and UMIs.
-    
-    Args:
-        saturation_df: DataFrame with columns: sample_rates, num_barcodes, num_umis
-        output_dir: Directory to save the plot
-    """
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(8, 3))
-    
-    # Convert sample_rates to percentage for x-axis
-    sample_rates_pct = saturation_df['sample_rates'] * 100
-    
-    # Plot barcode saturation curve
-    ax1.plot(sample_rates_pct, saturation_df['num_barcodes'], 
-             marker='o', markersize=4, linewidth=1.5, color='steelblue')
-    ax1.set_xlabel('Sampling Rate (%)')
-    ax1.set_ylabel('Number of Unique Barcodes')
-    ax1.set_title('Barcode Saturation Curve')
-    ax1.grid(True, alpha=0.3)
-    ax1.set_xlim(0, 105)
-    
-    # Plot UMI saturation curve
-    ax2.plot(sample_rates_pct, saturation_df['num_umis'], 
-             marker='o', markersize=4, linewidth=1.5, color='coral')
-    ax2.set_xlabel('Sampling Rate (%)')
-    ax2.set_ylabel('Number of Unique UMIs')
-    ax2.set_title('UMI Saturation Curve')
-    ax2.grid(True, alpha=0.3)
-    ax2.set_xlim(0, 105)
-    
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, 'saturation_curves.png'), dpi=150)
-    plt.close()
-
-
 # ============================================================================
 # Main Execution
 # ============================================================================
@@ -877,16 +746,7 @@ def main():
         #### Step 2: Extract lineage barcode and UMI
         #########################################################
         logger.info("#### Step 2: Extracting lineage barcode and UMI...")
-        # Determine max_reads: priority: --sample-n > --test mode
-        if args.sample_n is not None:
-            max_reads = args.sample_n
-            logger.info(f"SAMPLING MODE: Processing only first {max_reads} reads")
-        elif args.test:
-            max_reads = 2500  # Test mode: 10000 lines / 4 lines per read
-            logger.info("TEST MODE: Processing only first 2500 reads (10000 lines)")
-        else:
-            max_reads = None
-        results = extract_lineage_barcode_and_umi(assembled_fq_file, current_umi_len, current_p3_seq, current_p5_seq, max_reads=max_reads)
+        results = extract_lineage_barcode_and_umi(assembled_fq_file, current_umi_len, current_p3_seq, current_p5_seq)
         logger.info(f"Valid reads: {len(results)}")
         
         # Build base dataframe and pre-filter; this part is shared across all parameter combinations
@@ -898,14 +758,13 @@ def main():
         
         # Count reads per unique RNA molecule (lineage barcode + UMI)
         results_df = results_df.groupby(['lineage_bc', 'UMI']).size().reset_index(name="reads")
-        results_df['bc_len'] = results_df['lineage_bc'].str.len()  # Re-add bc_len after groupby
         results_df.sort_values(by='reads', ascending=False, inplace=True)
         
         # Apply reads cutoff
         results_clean = results_df[results_df['reads'] >= args.reads_cutoff].copy()
         results_clean['bc_len'] = results_clean['lineage_bc'].str.len()
         
-        logger.info(f"Rows after filtering: {len(results_clean)}")
+        logger.info(f"Reads after filtering: {len(results_clean)}")
         logger.info(f"Proportion of valid reads: {results_clean['reads'].sum() / results_df['reads'].sum():.4f}")
 
         # Basic sanity check: lists must be non-empty
@@ -916,115 +775,98 @@ def main():
         # Loop over full Cartesian product of (umi_ld, lb_hd_relative)
         for umi_ld in args.umi_ld:
             for lb_rel in args.lb_hd_relative:
-                combo_tag = f"reads_{args.reads_cutoff}_u_{umi_ld}_l_{lb_rel}"
-                combo_output_dir = os.path.join(sample_output_dir, combo_tag)
-                os.makedirs(combo_output_dir, exist_ok=True)
-                logger.info(
-                    f"Running denoising/annotation with umi_ld={umi_ld}, "
-                    f"lb_hd_relative={lb_rel} -> output dir: {combo_output_dir}"
-                )
+                combo_tag = f"u_{umi_ld}_l_{lb_rel}"
+            combo_output_dir = os.path.join(sample_output_dir, combo_tag)
+            os.makedirs(combo_output_dir, exist_ok=True)
+            logger.info(
+                f"Running denoising/annotation with umi_ld={umi_ld}, "
+                f"lb_hd_relative={lb_rel} -> output dir: {combo_output_dir}"
+            )
 
-                #########################################################
-                #### Diagnostic plots (pre-denoising, per-parameter set)
-                #########################################################
-                logger.info("Generating diagnostic plots (pre-denoising)...")
-                plot_barcode_length_distribution(
-                    results_df, combo_output_dir, title_suffix="", unedited_bc_len=UNEDITED_BC_LEN
-                )
-                plot_reads_cutoff_distribution(results_df, args.reads_cutoff, combo_output_dir)
-                plot_cutoff_vs_num_umis(results_df, args.reads_cutoff, combo_output_dir)
-                plot_cutoff_vs_fraction_reads_retained(results_df, args.reads_cutoff, combo_output_dir)
+            #########################################################
+            #### Diagnostic plots (pre-denoising, per-parameter set)
+            #########################################################
+            logger.info("Generating diagnostic plots (pre-denoising)...")
+            plot_barcode_length_distribution(
+                results_df, combo_output_dir, title_suffix="", unedited_bc_len=UNEDITED_BC_LEN
+            )
+            plot_reads_cutoff_distribution(results_df, args.reads_cutoff, combo_output_dir)
+            plot_cutoff_vs_num_umis(results_df, args.reads_cutoff, combo_output_dir)
+            plot_cutoff_vs_fraction_reads_retained(results_df, args.reads_cutoff, combo_output_dir)
 
-                #########################################################
-                #### Step 3: Denoise lineage barcode and UMI
-                #########################################################
-                logger.info("#### Step 3: Denoising lineage barcode and UMI...")
-                agg, mapping, stats = correct_lineage_and_umi(
-                    results_clean,
-                    umi_col="UMI",
-                    bc_col="lineage_bc",
-                    n_iter=args.denoise_iter,
-                    umi_ld=umi_ld,
-                    lb_hd_relative=lb_rel,
-                    logger=logger,
-                )
-                logger.info(f"Denoising stats (umi_ld={umi_ld}, lb_hd_relative={lb_rel}): {stats}")
-                
-                agg['bc_len'] = agg['lineage_bc_corr'].str.len()
-                agg.sort_values(by='n_reads', ascending=False, inplace=True)
-                
-                # Diagnostic plot 5: Distribution of lineage barcode lengths (after denoising)
-                plot_barcode_length_by_umi(agg, combo_output_dir, unedited_bc_len=UNEDITED_BC_LEN)
-                
-                agg2 = agg.groupby('lineage_bc_corr').size().reset_index(name="UMIs")
-                agg2.sort_values(by='UMIs', ascending=False, inplace=True)
-                agg2['bc_len'] = agg2['lineage_bc_corr'].str.len()
-                logger.info(f"Unique lineage barcodes (umi_ld={umi_ld}, lb_hd_relative={lb_rel}): {len(agg2)}")
-                
-                #########################################################
-                #### Saturation Analysis (on denoised data)
-                #########################################################
-                if args.saturation_analysis:
-                    sample_rates = [0.01, 0.05, 0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1.0]
-                    saturation_df = perform_saturation_analysis(
-                        agg, sample_rates, combo_output_dir, 
-                        bc_col='lineage_bc_corr', umi_col='umi_corr', count_col='n_reads',
-                        logger=logger
-                    )
-                    
-                    # Plot saturation curves
-                    logger.info("Plotting saturation curves...")
-                    plot_saturation_curve(saturation_df, combo_output_dir)
-                else:
-                    logger.info("Skipping saturation analysis (--saturation-analysis not provided)")
-                
-                #########################################################
-                #### Step 4: Annotate alleles
-                #########################################################
-                logger.info("#### Step 4: Annotating alleles...")
-                sequences = agg2['lineage_bc_corr'].tolist()
-                # For bulk DNA/RNA, we should perform reverse_complement on the sequences
-                sequences = [str(Seq(s).reverse_complement()) for s in sequences]
-                agg2['query'] = sequences
-                
-                results_allele = analyze_sequences(
-                    sequences, config=args.locus,
-                    min_sequence_length=args.min_bc_len, verbose=False
-                )
-                results_allele = results_allele.to_df()
+            #########################################################
+            #### Step 3: Denoise lineage barcode and UMI
+            #########################################################
+            logger.info("#### Step 3: Denoising lineage barcode and UMI...")
+            agg, mapping, stats = correct_lineage_and_umi(
+                results_clean,
+                umi_col="UMI",
+                bc_col="lineage_bc",
+                n_iter=args.denoise_iter,
+                umi_ld=umi_ld,
+                lb_hd_relative=lb_rel,
+                logger=logger,
+            )
+            logger.info(f"Denoising stats (umi_ld={umi_ld}, lb_hd_relative={lb_rel}): {stats}")
+            
+            agg['bc_len'] = agg['lineage_bc_corr'].str.len()
+            agg.sort_values(by='n_reads', ascending=False, inplace=True)
+            
+            # Diagnostic plot 5: Distribution of lineage barcode lengths (after denoising)
+            plot_barcode_length_by_umi(agg, combo_output_dir, unedited_bc_len=UNEDITED_BC_LEN)
+            
+            agg2 = agg.groupby('lineage_bc_corr').size().reset_index(name="UMIs")
+            agg2.sort_values(by='UMIs', ascending=False, inplace=True)
+            agg2['bc_len'] = agg2['lineage_bc_corr'].str.len()
+            logger.info(f"Unique lineage barcodes (umi_ld={umi_ld}, lb_hd_relative={lb_rel}): {len(agg2)}")
+            
+            #########################################################
+            #### Step 4: Annotate alleles
+            #########################################################
+            logger.info("#### Step 4: Annotating alleles...")
+            sequences = agg2['lineage_bc_corr'].tolist()
+            # For bulk DNA/RNA, we should perform reverse_complement on the sequences
+            sequences = [str(Seq(s).reverse_complement()) for s in sequences]
+            agg2['query'] = sequences
+            
+            results_allele = analyze_sequences(
+                sequences, config=args.locus,
+                min_sequence_length=args.min_bc_len, verbose=False
+            )
+            results_allele = results_allele.to_df()
 
-                #########################################################
-                #### Step 5: Merge and process final results
-                #########################################################
-                logger.info("#### Step 5: Processing final results...")
-                final = agg2.merge(results_allele, on='query', how='left')
-                final = final[['query', 'bc_len', 'UMIs', 'mutations', 'confidence', 'aligned_query', 'aligned_ref']]
-                
-                # Calculate MD5
-                final['md5'] = final.apply(concat_and_md5, axis=1)
-                
-                # Group by MD5
-                final2 = final.drop('query', axis=1).groupby('md5', as_index=False).agg({
-                    'bc_len': 'first',
-                    'UMIs': 'sum',
-                    'mutations': 'first',
-                    'confidence': 'first',
-                    'aligned_query': 'first',
-                    'aligned_ref': 'first'
-                }).sort_values(by='UMIs', ascending=False).reset_index(drop=True)
-                
-                # Diagnostic plot 7: Clone size distribution
-                plot_clone_size_distribution(final, combo_output_dir)
-                
-                # Diagnostic plot 8: Distribution of lineage barcode lengths by editing events
-                plot_barcode_length_by_editing_events(final, combo_output_dir, unedited_bc_len=UNEDITED_BC_LEN)
-                
-                # Save output for this parameter combination
-                output_file = os.path.join(combo_output_dir, f'{args.sample_id}_alleles.csv')
-                final2.to_csv(output_file, index=False)
-                logger.info(f"[{combo_tag}] Results saved to: {output_file}")
-                logger.info(f"[{combo_tag}] Total unique alleles: {len(final2)}")
-                logger.info(f"[{combo_tag}] Diagnostic plots saved to: {combo_output_dir}")
+            #########################################################
+            #### Step 5: Merge and process final results
+            #########################################################
+            logger.info("#### Step 5: Processing final results...")
+            final = agg2.merge(results_allele, on='query', how='left')
+            final = final[['query', 'bc_len', 'UMIs', 'mutations', 'confidence', 'aligned_query', 'aligned_ref']]
+            
+            # Calculate MD5
+            final['md5'] = final.apply(concat_and_md5, axis=1)
+            
+            # Group by MD5
+            final2 = final.drop('query', axis=1).groupby('md5', as_index=False).agg({
+                'bc_len': 'first',
+                'UMIs': 'sum',
+                'mutations': 'first',
+                'confidence': 'first',
+                'aligned_query': 'first',
+                'aligned_ref': 'first'
+            }).sort_values(by='UMIs', ascending=False).reset_index(drop=True)
+            
+            # Diagnostic plot 7: Clone size distribution
+            plot_clone_size_distribution(final, combo_output_dir)
+            
+            # Diagnostic plot 8: Distribution of lineage barcode lengths by editing events
+            plot_barcode_length_by_editing_events(final, combo_output_dir, unedited_bc_len=UNEDITED_BC_LEN)
+            
+            # Save output for this parameter combination
+            output_file = os.path.join(combo_output_dir, f'{args.sample_id}_alleles.csv')
+            final2.to_csv(output_file, index=False)
+            logger.info(f"[{combo_tag}] Results saved to: {output_file}")
+            logger.info(f"[{combo_tag}] Total unique alleles: {len(final2)}")
+            logger.info(f"[{combo_tag}] Diagnostic plots saved to: {combo_output_dir}")
         
         # Clean up PEAR output directory if requested
         if not args.keep_pear:

@@ -20,6 +20,7 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from Bio import SeqIO
 from Bio.Seq import Seq
 from fuzzysearch import find_near_matches
 from tqdm import tqdm
@@ -138,10 +139,6 @@ Examples:
                         help='Logging level')
     parser.add_argument('--test', action='store_true',
                         help='Test mode: only process first 10000 lines (approximately 2500 reads)')
-    parser.add_argument('--saturation-analysis', action='store_true',
-                        help='Enable saturation analysis (only runs when this flag is provided)')
-    parser.add_argument('--sample-n', type=int, default=None,
-                        help='Sample n reads for analysis')
     
     return parser.parse_args()
 
@@ -877,15 +874,10 @@ def main():
         #### Step 2: Extract lineage barcode and UMI
         #########################################################
         logger.info("#### Step 2: Extracting lineage barcode and UMI...")
-        # Determine max_reads: priority: --sample-n > --test mode
-        if args.sample_n is not None:
-            max_reads = args.sample_n
-            logger.info(f"SAMPLING MODE: Processing only first {max_reads} reads")
-        elif args.test:
-            max_reads = 2500  # Test mode: 10000 lines / 4 lines per read
+        # In test mode, limit to 2500 reads (10000 lines / 4 lines per read)
+        max_reads = 2500 if args.test else None
+        if args.test:
             logger.info("TEST MODE: Processing only first 2500 reads (10000 lines)")
-        else:
-            max_reads = None
         results = extract_lineage_barcode_and_umi(assembled_fq_file, current_umi_len, current_p3_seq, current_p5_seq, max_reads=max_reads)
         logger.info(f"Valid reads: {len(results)}")
         
@@ -905,7 +897,7 @@ def main():
         results_clean = results_df[results_df['reads'] >= args.reads_cutoff].copy()
         results_clean['bc_len'] = results_clean['lineage_bc'].str.len()
         
-        logger.info(f"Rows after filtering: {len(results_clean)}")
+        logger.info(f"Reads after filtering: {len(results_clean)}")
         logger.info(f"Proportion of valid reads: {results_clean['reads'].sum() / results_df['reads'].sum():.4f}")
 
         # Basic sanity check: lists must be non-empty
@@ -916,7 +908,7 @@ def main():
         # Loop over full Cartesian product of (umi_ld, lb_hd_relative)
         for umi_ld in args.umi_ld:
             for lb_rel in args.lb_hd_relative:
-                combo_tag = f"reads_{args.reads_cutoff}_u_{umi_ld}_l_{lb_rel}"
+                combo_tag = f"u_{umi_ld}_l_{lb_rel}"
                 combo_output_dir = os.path.join(sample_output_dir, combo_tag)
                 os.makedirs(combo_output_dir, exist_ok=True)
                 logger.info(
@@ -964,19 +956,16 @@ def main():
                 #########################################################
                 #### Saturation Analysis (on denoised data)
                 #########################################################
-                if args.saturation_analysis:
-                    sample_rates = [0.01, 0.05, 0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1.0]
-                    saturation_df = perform_saturation_analysis(
-                        agg, sample_rates, combo_output_dir, 
-                        bc_col='lineage_bc_corr', umi_col='umi_corr', count_col='n_reads',
-                        logger=logger
-                    )
-                    
-                    # Plot saturation curves
-                    logger.info("Plotting saturation curves...")
-                    plot_saturation_curve(saturation_df, combo_output_dir)
-                else:
-                    logger.info("Skipping saturation analysis (--saturation-analysis not provided)")
+                sample_rates = [0.01, 0.05, 0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1.0]
+                saturation_df = perform_saturation_analysis(
+                    agg, sample_rates, combo_output_dir, 
+                    bc_col='lineage_bc_corr', umi_col='umi_corr', count_col='n_reads',
+                    logger=logger
+                )
+                
+                # Plot saturation curves
+                logger.info("Plotting saturation curves...")
+                plot_saturation_curve(saturation_df, combo_output_dir)
                 
                 #########################################################
                 #### Step 4: Annotate alleles
